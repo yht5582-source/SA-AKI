@@ -33,6 +33,16 @@ test('no individual JavaScript download exceeds the 500 kB offline installation 
   for (const file of files) assert.ok((await stat(`dist/assets/${file}`)).size <= 500_000, `${file} exceeds 500 kB; split at a stable dependency boundary`);
 });
 
+test('HTML does not preload the shared Rolldown helper across service-worker response worlds', async () => {
+  const html = await readFile('dist/index.html', 'utf8');
+  const modulePreloads = [...html.matchAll(/<link rel="modulepreload"[^>]+href="([^"]+)"/g)].map(match => match[1]);
+  assert.ok(modulePreloads.some(reference => /\/assets\/vendor-[^/]+\.js$/.test(reference)), 'keep the substantive vendor preload');
+  assert.ok(
+    modulePreloads.every(reference => !/\/assets\/rolldown-runtime-[^/]+\.js$/.test(reference)),
+    'the tiny shared runtime is imported immediately and its redundant preload triggers Chromium cross-world service-worker mismatch warnings',
+  );
+});
+
 test('small semantic text keeps WCAG AA contrast in its actual design-token background pairs', async () => {
   const css = await readFile('src/styles/tokens.css', 'utf8');
   const colors = Object.fromEntries([...css.matchAll(/--([\w-]+):\s*#([\da-f]{3,6})\b/gi)].map(([, name, hex]) => [name, hex.length === 3 ? [...hex].map(digit => digit + digit).join('') : hex]));
