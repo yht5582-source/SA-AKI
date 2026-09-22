@@ -1,0 +1,55 @@
+.workflow-brand { padding: 32px 24px; font-size: 30px; font-weight: 700; }
+.workflow-local { margin: auto 20px 24px; }
+.workflow-main { gap: 20px; padding-bottom: 24px; }
+.workflow-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.workflow-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.workflow-field label { font-weight: 650; }
+.workflow-field input, .workflow-field select, .workflow-field textarea, .data-panel textarea { width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 6px; background: white; padding: 10px; min-height: 44px; color: var(--text); }
+.workflow-field.json-field, .workflow-field.multi-field { grid-column: 1 / -1; }
+.workflow-field.multi-field { border: 1px solid var(--border); padding: 12px; }
+.workflow-field.multi-field label { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.workflow-field.multi-field input { width: 20px; min-height: 20px; }
+.assessment pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.workflow-field small { font-size: 12px; }
+.workflow-field [aria-invalid=true] { border-color: var(--warning); }
+.field-error { color: var(--warning); font-size: 13px; }
+.case-list { padding: 0; list-style: none; }
+.case-list li { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--border); }
+.data-panel, .confirmation, .workflow-main form { border-block: 1px solid var(--border); padding-block: 20px; display: grid; gap: 16px; }
+.data-panel textarea { display: block; min-height: 130px; font-family: monospace; }
+.confirmation { background: var(--warning-surface); padding: 20px; }
+.assessment-progress { display: flex; gap: 16px; align-items: center; margin: 16px 0; }
+.assessment-progress > div { display: flex; gap: 4px; flex: 1; }
+.assessment-progress i { height: 8px; border-radius: 4px; background: var(--border); flex: 1; }
+.assessment-progress .filled { background: var(--teal); }
+.assessment-steps { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 20px; }
+.assessment-steps button { padding: 10px 12px; min-height: 44px; border: 1px solid var(--border); border-radius: 5px; background: white; color: var(--text); }
+.assessment-steps [aria-current=step] { color: white; background: var(--teal); }
+.assessment-workspace { display: grid; grid-template-columns: 33% 38% 29%; background: var(--surface); border: 1px solid var(--border); }
+.assessment-input, .assessment-judgment, .assessment-timeline { padding: 20px; min-width: 0; overflow-wrap: anywhere; }
+.assessment-judgment, .assessment-timeline { border-left: 1px solid var(--border); }
+.assessment-workspace h2 { margin-bottom: 16px; }
+.assessment-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 16px; }
+.assessment-fields + p { margin-top: 16px; }
+.assessment-actions { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px 0; background: var(--surface); }
+.assessment-actions small { width: 100%; }
+.ha-optin { display: flex; align-items: center; gap: 10px; margin-block: 20px; min-height: 44px; }
+.ha-optin input { width: 20px; height: 20px; }
+.review-values > div { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.assessment details { margin: 12px 0; }
+@media (max-width: 1050px) {
+  .workflow-main { padding: 0 16px 24px; }
+  .workflow-shell .case-toolbar > a { padding: 8px 16px; }
+  .workflow-shell .page-heading { padding-block: 16px; flex-wrap: wrap; }
+  .workflow-shell .page-heading h2 { font-size: 22px; }
+  .assessment-workspace { display: block; border: 0; background: transparent; }
+  .assessment-input, .assessment-judgment, .assessment-timeline { padding: 12px 0; border: 0; }
+  .assessment-timeline { border-top: 1px solid var(--border); }
+  .assessment-steps { flex-wrap: nowrap; overflow-x: auto; }
+  .assessment-steps button { white-space: nowrap; }
+  .assessment-actions { position: sticky; bottom: 0; border-top: 1px solid var(--border); z-index: 1; padding: 12px 0; }
+  .assessment-actions .button { flex: 1; min-height: 44px; }
+  .case-list li { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .assessment-fields { gap: 16px 12px; }
+}
+@media (max-width: 360px) { .assessment-fields { grid-template-columns: 1fr; } }
