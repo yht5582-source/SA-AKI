@@ -1,12 +1,18 @@
-import { createAnonymousCase, expect, step, test } from './support/flow';
+import { createAnonymousCase, expect, importDemo, step, test } from './support/flow';
 
 test('capture concept comparison surfaces at native desktop and both mobile reference sizes', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1586, height: 992 });
-  await createAnonymousCase(page);
-  await page.getByRole('link', { name: '決策首頁', exact: true }).click();
+  await page.goto('./');
+  await importDemo(page);
+  await page.getByRole('link', { name: '決策首頁 DEMO-001', exact: true }).click();
   await expect(page.getByRole('heading', { name: '決策首頁', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '目前輸入', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '目前判斷', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '0–72 小時病程', exact: true })).toBeVisible();
   await page.evaluate(async () => { await document.fonts.ready; });
   await page.screenshot({ path: testInfo.outputPath('desktop-command-center-1586x992.png'), fullPage: false });
+  await page.goto('./');
+  await createAnonymousCase(page);
   await page.getByRole('link', { name: '新增時間點', exact: true }).click();
   await step(page, 'AKI 評估');
   for (const { viewport, filename } of [

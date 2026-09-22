@@ -5,7 +5,11 @@ Reference surfaces:
 - `docs/design/concepts/desktop-command-center.png` — 1586 × 992 command-center concept
 - `docs/design/concepts/mobile-assessment-wizard.png` — mobile assessment concept
 
-Status: **BLOCKED — rendered-browser signoff has not been performed in this environment.**
+Status: **BLOCKED — CI run 35701472321 is functionally green, but a corrected desktop capture and reviewer inspection are still required.**
+
+## CI capture evidence — 35701472321
+
+CI run `35701472321` completed its functional gates successfully and produced all three required screenshot files. Manual inspection found both mobile assessment captures (390 × 844 and 430 × 764) usable. The desktop 1586 × 992 image is **invalid as visual-release evidence**: it opened a newly created case with no snapshots, so the dashboard rendered only `尚無時間點；請先新增評估。` instead of the mandated three-column command-center comparison. This does not invalidate the functional CI result, but it does leave visual signoff blocked. The capture must be rerun from a validated case with a timepoint and the resulting desktop image, plus both retained mobile images, must be reviewed before release.
 
 The repository contains a Playwright capture scenario (`e2e/fidelity.spec.ts`) at the approved desktop size and at 390 × 844 and 430 × 764 mobile sizes. The local environment cannot launch Playwright Chromium because revision `chromium_headless_shell-1243` is absent, and repeated official browser-download attempts failed at the CDN/network boundary. Therefore no newly rendered screenshot was available for honest native-size inspection. Screenshot generation by the test is evidence collection only; it is not an automated fidelity assertion.
 
