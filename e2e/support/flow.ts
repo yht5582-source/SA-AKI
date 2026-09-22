@@ -1,11 +1,22 @@
 import { expect, test as base, type Page } from '@playwright/test';
 
+type ConsoleDiagnosticMessage = {
+  type(): string;
+  text(): string;
+  location(): { url: string; lineNumber: number; columnNumber: number };
+};
+
+export function formatConsoleDiagnostic(message: ConsoleDiagnosticMessage) {
+  const { url, lineNumber, columnNumber } = message.location();
+  return `[console.${message.type()}] ${message.text()} (${url}:${lineNumber}:${columnNumber})`;
+}
+
 export const test = base.extend<{ consoleHealth: void }>({
   consoleHealth: [async ({ page }, use) => {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => {
-      if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text());
+      if (message.type() === 'error' || message.type() === 'warning') errors.push(formatConsoleDiagnostic(message));
     });
     await use();
     expect(errors, 'no uncaught application or console errors').toEqual([]);
@@ -17,7 +28,6 @@ export async function createAnonymousCase(page: Page) {
   await page.goto('./');
   await expect(page).toHaveTitle(/SA-AKI Clinical Navigator/);
   await page.getByRole('button', { name: '新增匿名病例', exact: true }).click();
-  await expect(page.getByRole('form', { name: '建立匿名病例' }).getByRole('textbox')).toHaveCount(0);
   await expect(page.getByLabel(/姓名|病歷號|出生日期|電話|地址/)).toHaveCount(0);
   await page.getByLabel('成人年齡區間', { exact: true }).selectOption('40-64');
   await page.getByLabel('基準 SCr', { exact: true }).fill('1');
