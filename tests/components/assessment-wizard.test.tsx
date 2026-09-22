@@ -10,6 +10,16 @@ afterEach(() => vi.restoreAllMocks());
 const mount = (suffix = '') => render(<MemoryRouter basename="/SA-AKI" initialEntries={['/SA-AKI/case/c1/assessment' + suffix]}><ApplicationRoutes /></MemoryRouter>);
 const step = (name: string) => screen.getByRole('button', { name });
 
+it('moves focus back to the current step heading when its stepper control is reselected', async () => {
+  const user = userEvent.setup(); mount();
+  const heading = await screen.findByRole('heading', { name: '感染／休克' });
+  const currentStep = screen.getByRole('button', { name: '感染／休克' });
+
+  await user.click(currentStep);
+
+  expect(heading).toHaveFocus();
+});
+
 it('navigates the eight ordered steps and preserves numeric zero separately from unknown across navigation and reload', async () => {
   const user = userEvent.setup(); const view = mount();
   await screen.findByRole('heading', { name: '感染／休克' });

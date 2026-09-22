@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from 'workbox-core';
+import type { WorkboxPlugin } from 'workbox-core';
 import { cleanupOutdatedCaches, precacheAndRoute, PrecacheFallbackPlugin } from 'workbox-precaching';
 import type { PrecacheEntry } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
@@ -14,6 +15,12 @@ if (!shell?.revision) throw new Error('A revisioned application shell is require
 // An old navigation response can reference hashed assets removed by the new precache.
 // Scope navigation responses to this shell revision so offline revisits use its matching assets.
 const navigationCacheName = `sa-aki-navigation-${shell.revision}`;
+const successfulNavigationResponse: WorkboxPlugin = {
+  fetchDidSucceed: async ({ response }) => {
+    if (!response.ok) throw new Error(`Navigation request failed with ${response.status}`);
+    return response;
+  },
+};
 
 void self.skipWaiting();
 clientsClaim();
@@ -24,7 +31,7 @@ registerRoute(
   new NetworkFirst({
     cacheName: navigationCacheName,
     networkTimeoutSeconds: 3,
-    plugins: [new PrecacheFallbackPlugin({ fallbackURL: '/SA-AKI/index.html' })],
+    plugins: [successfulNavigationResponse, new PrecacheFallbackPlugin({ fallbackURL: '/SA-AKI/index.html' })],
   }),
 );
 

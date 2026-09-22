@@ -43,7 +43,7 @@ class FetchEvent extends WorkerEvent {
   respondWith(response) { this.response = response; }
 }
 
-async function worker(version, caches) {
+async function worker(version, caches, { githubPagesDeepRoute404 = false } = {}) {
   const manifest = [{ url: '/SA-AKI/index.html', revision: version }, { url: `/SA-AKI/assets/app-${version}.js`, revision: null }];
   const bundled = await build({ configFile: false, logLevel: 'silent',
     define: { 'process.env.NODE_ENV': '"production"', 'self.__WB_MANIFEST': JSON.stringify(manifest) },
@@ -61,6 +61,9 @@ async function worker(version, caches) {
     async fetch(request) {
       if (!online) throw new Error('offline');
       const path = new URL(request.url).pathname;
+      if (githubPagesDeepRoute404 && path === '/SA-AKI/case/demo-001/assessment') {
+        return new Response('<script src="/SA-AKI/assets/app-not-found.js"></script>', { status: 404 });
+      }
       return new Response(path.endsWith('.js') ? `application-${version}` : `<script src="/SA-AKI/assets/app-${version}.js"></script>`);
     },
   };
@@ -105,4 +108,16 @@ test('after a changed build activates, offline revisits use the current shell, n
   const currentCacheNames = await caches.keys();
   assert.ok(oldNavigationCaches.every(name => !currentCacheNames.includes(name)), 'retired navigation caches must be removed');
   assert.equal(await (await caches.match('https://example.test/elsewhere')).text(), 'keep-other-application');
+});
+
+test('a GitHub Pages deep-link 404 is replaced by the current revisioned precached shell', async () => {
+  const caches = cacheStorage();
+  const current = await worker('current', caches, { githubPagesDeepRoute404: true });
+  await current.dispatch('install'); await current.dispatch('activate');
+
+  const response = await current.navigate('/SA-AKI/case/demo-001/assessment');
+
+  assert.equal(response.status, 200);
+  assert.equal(response.ok, true);
+  assert.match(await response.text(), /app-current\.js/);
 });

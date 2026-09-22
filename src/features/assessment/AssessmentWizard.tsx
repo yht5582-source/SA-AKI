@@ -65,6 +65,7 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   });
   const [id] = useState(() => crypto.randomUUID()); const [review, setReview] = useState(!!existing); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [haReviewed, setHaReviewed] = useState(false);
   const [saveIncompleteHa, setSaveIncompleteHa] = useState(false);
+  const [stepFocusRequest, setStepFocusRequest] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null); const readonly = !!existing;
   // Saved observations are immutable inputs to validation/rules, never round-tripped through form strings.
   const candidate = existing ?? candidateFrom(draft.values, stored.case.id, id, draft.haEnabled);
@@ -85,13 +86,14 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   const canSave = validation.success && exportValidation?.success && (!draft.haEnabled || haReviewRecorded || saveIncompleteHa);
   const missing = allFields.filter(field => !draft.values[field.key] && ['timestamp', 'hoursFromSepsisOnset', 'actualWeightKg', 'onEcmo', 'creatinineMgDl', 'urineVolumeMl', 'urineObservationHours', 'urineWeightBasis', 'potassiumMmolL', 'arterialPh', 'mapMmHg', 'lactateMmolL'].includes(field.key));
   function update(values: Record<string, string>) { setDraft(current => ({ ...current, values })); setHaReviewed(false); setSaveIncompleteHa(false); }
+  function selectStep(step: number) { setDraft(current => current.step === step ? current : { ...current, step }); setStepFocusRequest(current => current + 1); }
   useEffect(() => { if (!readonly && !writeDraft(stored.case.id, draft)) { /* The status below describes session persistence as best effort. */ } }, [draft, readonly, stored.case.id]);
-  useEffect(() => { heading.current?.focus(); }, [draft.step, review]);
+  useEffect(() => { heading.current?.focus(); }, [draft.step, review, stepFocusRequest]);
   return <section className="assessment"><div className="page-heading"><h2>匿名病例 {stored.case.anonymousCode}</h2><Link to="/">返回病例清單</Link><Link to={`/case/${encodeURIComponent(stored.case.id)}`}>決策首頁</Link></div>
     {location.state?.saved === true && <p role="status">時間點已儲存</p>}
     {location.state?.draftCleanupFailed === true && <p role="status" className="field-error">時間點已儲存，但瀏覽器無法清除目前分頁的評估草稿；草稿可能仍保留。請關閉分頁／瀏覽工作階段，並依機構政策確認或清除網站資料。</p>}
     {readonly && <p>已儲存時間點（唯讀）</p>}
-    {!review && <Stepper labels={stepLabels} current={draft.step} onChange={step => setDraft(current => ({ ...current, step }))}/>}
+    {!review && <Stepper labels={stepLabels} current={draft.step} onChange={selectStep}/>}
     <div className="assessment-workspace"><section className="assessment-input"><h2 ref={heading} tabIndex={-1}>{review ? '最終檢視' : stepLabels[draft.step]}</h2>
       {(draft.step === 6 || draft.haEnabled) && <HaWarning/>}
       {draft.step === 5 && <p>處方算式與 RCA 僅供臨床團隊審查，非機器醫囑；所有確認均須明確輸入，未知不代表同意或無禁忌。不得據此自動設定機器或 citrate／calcium 輸注。</p>}
