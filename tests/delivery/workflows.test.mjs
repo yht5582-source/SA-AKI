@@ -76,6 +76,8 @@ test('Pages can deploy only the artifact verified in the same successful main-pu
   assert.equal(deploy.if, undefined, 'deploy must retain the default success-only dependency gate');
   assert.deepEqual(deploy.permissions, { pages: 'write', 'id-token': 'write' });
   assert.deepEqual(deploy.environment, { name: 'github-pages', url: 'https://yht5582-source.github.io/SA-AKI/' });
+  const configure = deploy.steps.find(step => step.uses?.startsWith('actions/configure-pages@'));
+  assert.equal(configure?.with?.enablement, true, 'the first verified deployment must be able to enable the Pages site');
   assert.ok(deploy.steps.some(step => step.uses?.startsWith('actions/deploy-pages@')));
   assert.ok(!deploy.steps.some(step => step.uses?.startsWith('actions/download-artifact@')));
 });
