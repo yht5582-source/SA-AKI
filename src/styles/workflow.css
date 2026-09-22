@@ -33,6 +33,10 @@
 .assessment-fields + p { margin-top: 16px; }
 .assessment-actions { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px 0; background: var(--surface); }
 .assessment-actions small { width: 100%; }
+.missing-data li > span { flex: 1; min-width: 0; }
+.missing-data li > .button { margin-left: auto; padding: 6px 10px; min-height: 36px; white-space: nowrap; }
+.missing-case-data { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.missing-case-data p { margin: 0; flex: 1; min-width: 12rem; }
 .ha-optin { display: flex; align-items: center; gap: 10px; margin-block: 20px; min-height: 44px; }
 .ha-optin input { width: 20px; height: 20px; }
 .review-values > div { padding: 8px 0; border-bottom: 1px solid var(--border); }

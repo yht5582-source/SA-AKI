@@ -67,6 +67,7 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   const [id] = useState(() => crypto.randomUUID()); const [review, setReview] = useState(!!existing); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [haReviewed, setHaReviewed] = useState(false);
   const [saveIncompleteHa, setSaveIncompleteHa] = useState(false);
   const [stepFocusRequest, setStepFocusRequest] = useState(0);
+  const fieldFocusRequest = useRef<string | undefined>(undefined);
   const heading = useRef<HTMLHeadingElement>(null); const readonly = !!existing;
   // Saved observations are immutable inputs to validation/rules, never round-tripped through form strings.
   const candidate = existing ?? candidateFrom(draft.values, stored.case.id, id, draft.haEnabled);
@@ -88,8 +89,28 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   const missing = allFields.filter(field => !draft.values[field.key] && ['timestamp', 'hoursFromSepsisOnset', 'actualWeightKg', 'onEcmo', 'creatinineMgDl', 'urineVolumeMl', 'urineObservationHours', 'urineWeightBasis', 'potassiumMmolL', 'arterialPh', 'mapMmHg', 'lactateMmolL'].includes(field.key));
   function update(values: Record<string, string>) { setDraft(current => ({ ...current, values })); setHaReviewed(false); setSaveIncompleteHa(false); }
   function selectStep(step: number) { setDraft(current => current.step === step ? current : { ...current, step }); setStepFocusRequest(current => current + 1); }
+  function goToCaseData() {
+    if (!readonly) writeDraft(stored.case.id, draft);
+    navigate('/', { state: { editCaseId: stored.case.id, returnTo: location.pathname + location.search } });
+  }
+  function goToPreviousStep() {
+    if (draft.step > 0) { setDraft(current => ({ ...current, step: current.step - 1 })); return; }
+    goToCaseData();
+  }
+  function completeMissingField(key: string) {
+    const targetStep = stepFields.findIndex(fields => fields.some(field => field.key === key));
+    if (targetStep < 0) return;
+    fieldFocusRequest.current = key;
+    setReview(false); setDraft(current => ({ ...current, step: targetStep })); setStepFocusRequest(current => current + 1);
+  }
   useEffect(() => { if (!readonly && !writeDraft(stored.case.id, draft)) { /* The status below describes session persistence as best effort. */ } }, [draft, readonly, stored.case.id]);
-  useEffect(() => { heading.current?.focus(); }, [draft.step, review, stepFocusRequest]);
+  useEffect(() => {
+    const key = fieldFocusRequest.current;
+    if (!key) { heading.current?.focus(); return; }
+    const field = document.querySelector<HTMLElement>(`[data-field-key="${key}"]`);
+    field?.querySelector<HTMLElement>('input, select, textarea, button')?.focus();
+    fieldFocusRequest.current = undefined;
+  }, [draft.step, review, stepFocusRequest]);
   return <section className="assessment"><div className="page-heading"><h2>匿名病例 {stored.case.anonymousCode}</h2><Link to="/">返回病例清單</Link><Link to={`/case/${encodeURIComponent(stored.case.id)}`}>決策首頁</Link></div>
     {location.state?.saved === true && <p role="status">時間點已儲存</p>}
     {location.state?.draftCleanupFailed === true && <p role="status" className="field-error">時間點已儲存，但瀏覽器無法清除目前分頁的評估草稿；草稿可能仍保留。請關閉分頁／瀏覽工作階段，並依機構政策確認或清除網站資料。</p>}
@@ -115,7 +136,7 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
           </>}
         </>
           : <><AssessmentStep fields={stepFields[draft.step]} values={draft.values} errors={errors} onChange={(key, value) => update({ ...draft.values, [key]: value })} disabled={readonly}/>{draft.step === 1 && <p>基準 SCr：{stored.case.baselineCreatinineMgDl ?? '未知'} mg/dL；來源：{stored.case.baselineCreatinineSource ?? '尚未記錄'}。Sepsis 起始時間：{stored.case.sepsisOnsetTimestamp ?? '尚未記錄'}。</p>}</>}
-    </section><aside className="assessment-judgment"><h2>目前判斷</h2><div className="judgment"><div><strong>需重評</strong><p>資料仍需臨床確認；未完成判斷不等於正常。</p></div></div><section className="missing-data"><h3>缺失資料</h3><ul>{missing.map(field => <li key={field.key}>{field.label}{['timestamp', 'hoursFromSepsisOnset', 'actualWeightKg', 'onEcmo'].includes(field.key) ? '（儲存必填）' : '（臨床評估未完成）'}</li>)}</ul>{!stored.case.baselineCreatinineSource && <p>基準 SCr 與資料來源尚未記錄</p>}{draft.haEnabled && !haEligible && <p>HA 四項門檻尚未通過；可明確確認僅儲存未完成觀察，再於後續時間點重評。</p>}</section><section className="next-action"><h3>下一步</h3><p>補齊缺失資料後重新評估</p><small>重評時間：待臨床確認</small></section></aside><aside className="assessment-timeline"><h2>既有時間點</h2><ul>{stored.snapshots.map(snapshot => <li key={snapshot.id}><Link to={`/case/${encodeURIComponent(stored.case.id)}/assessment/${encodeURIComponent(snapshot.id)}`}>{snapshot.hoursFromSepsisOnset} h · {snapshot.timestamp}</Link></li>)}</ul>{stored.snapshots.length === 0 && <p>尚無資料</p>}<Link className="button" to={`/case/${encodeURIComponent(stored.case.id)}/assessment`}>新增時間點</Link></aside></div>
+    </section><aside className="assessment-judgment"><h2>目前判斷</h2><div className="judgment"><div><strong>需重評</strong><p>資料仍需臨床確認；未完成判斷不等於正常。</p></div></div><section className="missing-data"><h3>缺失資料</h3><ul>{missing.map(field => <li key={field.key}><span>{field.label}{['timestamp', 'hoursFromSepsisOnset', 'actualWeightKg', 'onEcmo'].includes(field.key) ? '（儲存必填）' : '（臨床評估未完成）'}</span><button type="button" className="button" disabled={readonly} aria-label={`前往填寫${field.label}`} onClick={() => completeMissingField(field.key)}>前往填寫</button></li>)}</ul>{!stored.case.baselineCreatinineSource && <div className="missing-case-data"><p>基準 SCr 與資料來源尚未記錄</p><button type="button" className="button" onClick={goToCaseData}>前往填寫病例資料</button></div>}{draft.haEnabled && !haEligible && <p>HA 四項門檻尚未通過；可明確確認僅儲存未完成觀察，再於後續時間點重評。</p>}</section><section className="next-action"><h3>下一步</h3><p>補齊缺失資料後重新評估</p><small>重評時間：待臨床確認</small></section></aside><aside className="assessment-timeline"><h2>既有時間點</h2><ul>{stored.snapshots.map(snapshot => <li key={snapshot.id}><Link to={`/case/${encodeURIComponent(stored.case.id)}/assessment/${encodeURIComponent(snapshot.id)}`}>{snapshot.hoursFromSepsisOnset} h · {snapshot.timestamp}</Link></li>)}</ul>{stored.snapshots.length === 0 && <p>尚無資料</p>}<Link className="button" to={`/case/${encodeURIComponent(stored.case.id)}/assessment`}>新增時間點</Link></aside></div>
     {error && <p role="alert">{error}</p>}{review && exportValidation && !exportValidation.success && <p role="alert">時間點與病例時間關係不一致，請修正後儲存。</p>}
     <div className="assessment-actions">{review ? <><button className="button" onClick={() => setReview(false)}>返回編輯</button>{!readonly && <button className="button primary" disabled={!canSave || busy} onClick={async () => {
       if (!canSave || !validation.success || busy) return; setBusy(true); setError('');
@@ -125,6 +146,6 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
         const draftCleared = clearAssessmentDrafts(stored.case.id);
         navigate(`/case/${encodeURIComponent(stored.case.id)}/assessment/${id}`, { replace: true, state: { saved: true, draftCleanupFailed: !draftCleared } });
       } catch { setError('儲存失敗；資料未確認寫入，請重試。'); } finally { setBusy(false); }
-    }}>確認儲存時間點</button>}</> : <><button className="button" disabled={draft.step === 0} onClick={() => setDraft(current => ({ ...current, step: current.step - 1 }))}>上一步</button><button className="button primary" disabled={draft.step === 7} onClick={() => setDraft(current => ({ ...current, step: current.step + 1 }))}>下一步</button><button className="button" onClick={() => setReview(true)}>檢視並確認</button></>}<small>未確認草稿以 sessionStorage 嘗試保留於目前分頁工作階段；尚未儲存至病例。儲存後會嘗試清除，若瀏覽器拒絕則顯示警示。</small></div>
+    }}>確認儲存時間點</button>}</> : <><button type="button" className="button" onClick={goToPreviousStep}>{draft.step === 0 ? '上一步：病例資料' : '上一步'}</button><button type="button" className="button primary" disabled={draft.step === 7} onClick={() => setDraft(current => ({ ...current, step: current.step + 1 }))}>下一步</button><button type="button" className="button" onClick={() => setReview(true)}>檢視並確認</button></>}<small>未確認草稿以 sessionStorage 嘗試保留於目前分頁工作階段；尚未儲存至病例。儲存後會嘗試清除，若瀏覽器拒絕則顯示警示。</small></div>
   </section>;
 }

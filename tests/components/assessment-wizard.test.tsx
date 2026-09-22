@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ApplicationRoutes } from '../../src/app/routes';
@@ -18,6 +18,34 @@ it('moves focus back to the current step heading when its stepper control is res
   await user.click(currentStep);
 
   expect(heading).toHaveFocus();
+});
+
+it('returns from the first assessment step to case editing and resumes the preserved draft after updating', async () => {
+  const user = userEvent.setup(); mount();
+  await screen.findByRole('heading', { name: '感染／休克' });
+  await user.type(screen.getByLabelText('距 Sepsis 起始時數'), '6');
+
+  await user.click(screen.getByRole('button', { name: '上一步：病例資料' }));
+
+  expect(await screen.findByRole('form', { name: '編輯匿名病例' })).toBeVisible();
+  await user.type(screen.getByLabelText('基準 SCr'), '1.1');
+  await user.click(screen.getByRole('button', { name: '確認更新病例' }));
+
+  expect(await screen.findByRole('heading', { name: '感染／休克' })).toBeVisible();
+  expect(screen.getByLabelText('距 Sepsis 起始時數')).toHaveValue(6);
+  expect((await caseRepository.getCase('c1'))?.case.baselineCreatinineMgDl).toBe(1.1);
+});
+
+it('lets the user jump from a missing-data prompt to the exact field that needs completion', async () => {
+  const user = userEvent.setup(); mount();
+  await screen.findByRole('heading', { name: '感染／休克' });
+  const missingItem = screen.getByText('目前 SCr（臨床評估未完成）').closest('li');
+  expect(missingItem).not.toBeNull();
+
+  await user.click(within(missingItem!).getByRole('button', { name: '前往填寫目前 SCr' }));
+
+  expect(screen.getByRole('heading', { name: 'AKI 評估' })).toBeVisible();
+  expect(screen.getByLabelText('目前 SCr')).toHaveFocus();
 });
 
 it('navigates the eight ordered steps and preserves numeric zero separately from unknown across navigation and reload', async () => {
