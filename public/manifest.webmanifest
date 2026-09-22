@@ -1,0 +1,10 @@
+{
+  "id": "/SA-AKI/", "name": "SA-AKI Clinical Navigator", "short_name": "SA-AKI",
+  "lang": "zh-Hant", "description": "成人醫護人員專用，臨床決策支援，非自動醫囑。",
+  "start_url": "/SA-AKI/", "scope": "/SA-AKI/", "display": "standalone",
+  "background_color": "#F4F7F9", "theme_color": "#122C3F",
+  "icons": [
+    { "src": "icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

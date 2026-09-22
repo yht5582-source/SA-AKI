@@ -1,0 +1,62 @@
+.skip-link { position: fixed; z-index: 20; top: 8px; left: 8px; padding: 10px 14px; border-radius: var(--radius); background: var(--surface); color: var(--navy); font-weight: 700; transform: translateY(-160%); }
+.skip-link:focus { transform: translateY(0); }
+.workflow-sidebar-nav { padding-bottom: 16px; }
+.workflow-sidebar-nav a { font-size: 16px; min-height: 46px; gap: 12px; }
+.workflow-sidebar-nav a[aria-current="page"] { background: var(--teal); border-left: 5px solid #18bbc1; padding-left: 19px; }
+.governance-mobile-nav { display: none; }
+.governance-page { width: min(1040px, 100%); margin: 0 auto; padding: 30px 0 54px; }
+.governance-intro { padding-bottom: 24px; border-bottom: 2px solid var(--navy); }
+.governance-intro h2 { font-size: clamp(28px, 3vw, 38px); margin-bottom: 10px; }
+.governance-intro p { max-width: 78ch; color: var(--muted); margin-top: 7px; }
+.governance-intro strong { color: var(--text); }
+.version-line { font-size: 14px; }
+.governance-section { padding: 24px 0; border-bottom: 1px solid var(--border); }
+.governance-section h3 { margin-bottom: 10px; }
+.governance-section p + p { margin-top: 10px; }
+.governance-section ul { margin: 10px 0 0; padding-left: 24px; }
+.governance-section li + li { margin-top: 8px; }
+.governance-warning { display: flex; align-items: flex-start; gap: 14px; margin: 22px 0; padding: 18px 20px; border-left: 5px solid var(--warning); background: var(--warning-surface); }
+.governance-warning > svg { color: var(--warning); margin-top: 2px; }
+.governance-warning h3 { color: var(--warning); margin-bottom: 8px; }
+.governance-warning p + p { margin-top: 7px; }
+.evidence-list { border-top: 1px solid var(--border); }
+.evidence-record { padding: 28px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.evidence-record-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.evidence-record h3 { display: block; max-width: 72ch; font-size: 20px; }
+.source-id { color: var(--muted); font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; margin-top: 4px; }
+.source-status { flex: 0 0 auto; border: 1px solid currentColor; border-radius: 999px; padding: 4px 9px; color: var(--navy); font-size: 13px; font-weight: 700; }
+.source-status-draft, .source-status-unverified { color: var(--warning); background: var(--warning-surface); }
+.source-status-local { color: var(--teal); }
+.evidence-metadata { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 20px; margin: 18px 0; }
+.evidence-metadata div { min-width: 0; }
+.evidence-metadata dt { color: var(--muted); font-size: 12px; font-weight: 700; }
+.evidence-metadata dd { margin: 2px 0 0; }
+.source-links { display: flex; flex-wrap: wrap; gap: 10px 24px; padding-block: 12px; border-block: 1px solid var(--border); }
+.source-links a, .report-section a { display: inline-flex; align-items: center; gap: 7px; color: #075eac; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.source-links svg, .report-section svg { width: 17px; height: 17px; }
+.evidence-scope { padding-top: 16px; }
+.evidence-scope h4 { margin: 0 0 8px; font-size: 16px; }
+.scope-boundary { color: var(--warning); font-weight: 650; margin-bottom: 10px; }
+.evidence-scope ul { margin: 0; padding-left: 22px; }
+.evidence-scope li + li { margin-top: 12px; }
+.evidence-scope li p { margin-top: 3px; color: var(--muted); }
+.evidence-scope small { display: block; margin-top: 3px; }
+.source-notes { margin-top: 14px; padding: 12px 14px; background: var(--safety); }
+.report-section a { margin-top: 14px; }
+@media (max-width: 1050px) {
+  .governance-mobile-nav { grid-column: 1 / -1; display: flex !important; gap: 4px; overflow-x: auto; padding: 8px 16px 10px; border-bottom: 1px solid var(--border); }
+  .governance-mobile-nav a { flex: 0 0 auto; min-height: 42px; padding: 9px 11px; border-radius: 4px; color: var(--navy); font-weight: 650; }
+  .governance-mobile-nav a[aria-current="page"] { background: var(--teal); color: white; }
+  .governance-page { padding-top: 20px; }
+  .governance-intro h2 { font-size: 28px; }
+  .evidence-metadata { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .governance-warning { padding: 14px; }
+  .evidence-record-header { display: block; }
+  .source-status { display: inline-block; margin-top: 12px; }
+  .evidence-metadata { grid-template-columns: 1fr; gap: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skip-link { transition: none; }
+}

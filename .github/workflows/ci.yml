@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Chromium and OS dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Verify application and delivery
+        run: npm run verify
+      - name: Preserve successful fidelity screenshots
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fidelity-screenshots-${{ github.sha }}
+          path: |
+            test-results/**/desktop-command-center-1586x992.png
+            test-results/**/mobile-assessment-390x844.png
+            test-results/**/mobile-assessment-430x764.png
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve failing browser evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-ci
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

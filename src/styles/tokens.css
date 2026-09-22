@@ -1,0 +1,8 @@
+:root {
+  --navy: #122c3f; --teal: #087f83; --background: #f4f7f9;
+  --surface: #fff; --text: #142e40; --muted: #60717d; --border: #dce4e9;
+  --safety: #e6f3f6; --critical: #c52428; --warning: #9f6010;
+  --warning-surface: #fff7e8; --monitor: #0965c6; --stable: #25893d;
+  --radius: 6px; --focus: #0563ad;
+  --font: "Noto Sans TC Variable", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
