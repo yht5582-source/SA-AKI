@@ -112,8 +112,89 @@ export function calculateKdigoStage(input: KdigoInput): KdigoResult {
 
 const elapsed = (later: string, earlier: string) => (Date.parse(later) - Date.parse(earlier)) / 3_600_000;
 
+type AcuteRrtEpisode = {
+  historicalStage3: boolean;
+  currentRrt: boolean;
+  uncertain: boolean;
+  evidence: string[];
+  missingData: string[];
+};
+
+/**
+ * Reconciles immutable CRRT observations known at an observation time. An event must be
+ * no later than the snapshot that documents it; passing wall-clock time cannot turn a
+ * planned field into performed treatment. A same-snapshot start/stop pair is the only
+ * reliable episode boundary in this sparse model. Unlinked or conflicting records remain
+ * visible uncertainty rather than being arbitrarily paired or treated as recovery.
+ */
+function reconcileAcuteRrtEpisode(snapshots: ClinicalSnapshot[], observationTimestamp: string): AcuteRrtEpisode {
+  const observationTime = Date.parse(observationTimestamp);
+  const starts = new Set<number>(), stops = new Set<number>();
+  const pairedStopsByStart = new Map<number, Set<number>>();
+  const unverifiedStarts = new Set<number>(), unverifiedStops = new Set<number>();
+  for (const snapshot of snapshots) {
+    const documentedAt = Date.parse(snapshot.timestamp);
+    if (documentedAt > observationTime) continue;
+    const start = snapshot.crrtStartedTimestamp === undefined ? NaN : Date.parse(snapshot.crrtStartedTimestamp);
+    const stop = snapshot.crrtStoppedTimestamp === undefined ? NaN : Date.parse(snapshot.crrtStoppedTimestamp);
+    const validStart = Number.isFinite(start) && start <= documentedAt;
+    const validStop = Number.isFinite(stop) && stop <= documentedAt;
+    if (Number.isFinite(start)) {
+      if (validStart) { starts.add(start); unverifiedStarts.delete(start); }
+      else unverifiedStarts.add(start);
+    }
+    if (Number.isFinite(stop)) {
+      if (validStop) { stops.add(stop); unverifiedStops.delete(stop); }
+      else unverifiedStops.add(stop);
+    }
+    if (validStart && validStop) {
+      const pair = pairedStopsByStart.get(start) ?? new Set<number>();
+      pair.add(stop);
+      pairedStopsByStart.set(start, pair);
+    }
+  }
+  const linkedStarts = new Set<number>(), linkedStops = new Set<number>();
+  let uncertain = false;
+  const confirmedPairs: { start: number; stop: number }[] = [];
+  for (const [start, stopsForStart] of pairedStopsByStart) {
+    linkedStarts.add(start);
+    for (const stop of stopsForStart) {
+      linkedStops.add(stop);
+      if (stop <= start) uncertain = true;
+      else confirmedPairs.push({ start, stop });
+    }
+    if (stopsForStart.size > 1) uncertain = true;
+  }
+  confirmedPairs.sort((a, b) => a.start - b.start || a.stop - b.stop);
+  for (let index = 1; index < confirmedPairs.length; index++) {
+    if (confirmedPairs[index].start <= confirmedPairs[index - 1].stop) uncertain = true;
+  }
+  const unlinkedStarts = [...starts].filter(start => !linkedStarts.has(start));
+  const unlinkedStops = [...stops].filter(stop => !linkedStops.has(stop));
+  const latestConfirmedStop = confirmedPairs.at(-1)?.stop;
+  const unlinkedStartConflictsWithCompletedEpisode = unlinkedStarts.some(start =>
+    confirmedPairs.some(pair => start >= pair.start && start <= pair.stop)
+    || (latestConfirmedStop !== undefined && start <= latestConfirmedStop),
+  );
+  if (unlinkedStops.length > 0 || unlinkedStarts.length > 1 || unlinkedStartConflictsWithCompletedEpisode) uncertain = true;
+  const currentRrt = !uncertain && unlinkedStarts.length === 1 && unlinkedStops.length === 0;
+  const historicalStage3 = starts.size > 0;
+  const evidence: string[] = [];
+  if (historicalStage3) evidence.push('本次急性病程歷史最高 KDIGO stage 3：已記錄急性 RRT；此歷史最高分期不等同目前分期、維持性透析或新的 KRT 適應症。');
+  if (currentRrt) evidence.push('縱向 CRRT 病程：已記錄未停止的急性 RRT；後續空白不代表停機。');
+  else if (historicalStage3 && !uncertain) evidence.push('縱向 CRRT 病程：有明確成對的開始／停止紀錄；目前 KDIGO 分期依本次 SCr、尿量與其他目前資料判定。');
+  const missingData: string[] = [];
+  if (unverifiedStarts.size > 0 || unverifiedStops.size > 0) missingData.push('CRRT 開始／停止時間晚於記錄它的觀察；除非後續觀察再次明確確認，不可視為已執行。');
+  if ([...pairedStopsByStart.values()].some(stopsForStart => stopsForStart.size > 1)) missingData.push('同一 CRRT 開始時間有互相矛盾的停止時間；需人工核對原始紀錄。');
+  if (confirmedPairs.some(pair => pair.stop <= pair.start) || [...pairedStopsByStart].some(([start, stopsForStart]) => [...stopsForStart].some(stop => stop <= start)) || confirmedPairs.some((pair, index) => index > 0 && pair.start <= confirmedPairs[index - 1].stop)) missingData.push('CRRT 成對病程區間重疊、相接或持續時間無效；需人工核對原始紀錄。');
+  if (unlinkedStartConflictsWithCompletedEpisode) missingData.push('未連結 CRRT 開始時間落在或不晚於已完成病程區間；不可自動視為新的目前治療。');
+  if (unlinkedStops.length > 0 || unlinkedStarts.length > 1) missingData.push('CRRT 開始／停止紀錄無法可靠連結為同一病程；不可據此判定已恢復或目前仍在治療。');
+  if (uncertain) evidence.push('縱向 CRRT 病程存在矛盾／歧義；目前治療狀態與病程邊界不可由此自動判定。');
+  return { historicalStage3, currentRrt, uncertain, evidence, missingData };
+}
+
 /** Current staging plus first documented AKI timing; never equates detection with exact onset. */
-export function evaluateDiagnosis(caseData: PatientCase, snapshots: ClinicalSnapshot[]): DecisionResult[] {
+export function evaluateDiagnosis(caseData: PatientCase, snapshots: ClinicalSnapshot[], currentSnapshotId?: string): DecisionResult[] {
   caseExportSchema.parse({ schemaVersion: 1, case: caseData, snapshots });
   resolveRuleSources('sepsis-diagnostic-context', ['SEPSIS_3_2016']);
   resolveRuleSources('sa-aki-seven-day-window', ['ADQI_28']);
@@ -122,10 +203,10 @@ export function evaluateDiagnosis(caseData: PatientCase, snapshots: ClinicalSnap
   // Persistence permits zero as entered data, but it is not a usable comparator.
   // Drop only the comparator so independently valid urine/serial-SCr axes still run.
   const unusableBaseline = caseData.baselineCreatinineMgDl === 0;
-  const ordered = [...snapshots].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
-  const staged = ordered.map((snapshot, index) => ({
-    snapshot,
-    result: calculateKdigoStage({
+  const ordered = [...snapshots].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a.id.localeCompare(b.id));
+  const staged = ordered.map((snapshot, index) => {
+    const rrt = reconcileAcuteRrtEpisode(ordered, snapshot.timestamp);
+    const calculated = calculateKdigoStage({
       currentCreatinineMgDl: snapshot.creatinineMgDl,
       baselineCreatinineMgDl: unusableBaseline ? undefined : caseData.baselineCreatinineMgDl,
       baselineSource: caseData.baselineCreatinineSource,
@@ -135,10 +216,17 @@ export function evaluateDiagnosis(caseData: PatientCase, snapshots: ClinicalSnap
       urineVolumeMl: snapshot.urineVolumeMl,
       urineObservationHours: snapshot.urineObservationHours,
       urineWeightKg: snapshot.urineWeightBasis ? snapshot.urineNormalizationWeightKg : undefined,
-      renalReplacementTherapy: !!snapshot.crrtStartedTimestamp && elapsed(snapshot.timestamp, snapshot.crrtStartedTimestamp) >= 0 && (!snapshot.crrtStoppedTimestamp || elapsed(snapshot.timestamp, snapshot.crrtStoppedTimestamp) < 0),
-    }),
-  }));
-  const current = staged.at(-1);
+      renalReplacementTherapy: rrt.currentRrt,
+    });
+    return { snapshot, result: rrt.uncertain ? {
+      ...calculated, confidence: 'low' as const, provisional: true,
+      status: calculated.stage > 0 ? 'provisional' as const : 'insufficient-data' as const,
+      evidence: [...calculated.evidence, ...rrt.evidence], missingData: [...calculated.missingData, ...rrt.missingData],
+    } : { ...calculated, evidence: [...calculated.evidence, ...rrt.evidence], missingData: [...calculated.missingData, ...rrt.missingData] } };
+  });
+  // A caller's explicit current observation is clinical provenance, not a display-order tie-break.
+  // Deterministic ordering above is retained solely for historical reconciliation.
+  const current = currentSnapshotId === undefined ? staged.at(-1) : staged.find(item => item.snapshot.id === currentSnapshotId) ?? staged.at(-1);
   const stage = current?.result ?? calculateKdigoStage({});
   const first = staged.find(item => item.result.stage > 0);
   const timingMissing = ['真正 AKI 起始時間／未觀察區間（首次偵測不等同起始）'];

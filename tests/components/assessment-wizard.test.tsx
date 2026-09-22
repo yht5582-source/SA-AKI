@@ -149,6 +149,31 @@ it('limits passing HA gates to multidisciplinary review and revokes completion w
   expect((await caseRepository.getCase('c1'))!.snapshots).toHaveLength(1);
 });
 
+it('fails closed in the rendered HA wizard when the latest prior instant has conflicting duplicate observations', async () => {
+  const fixture = haInput();
+  const firstPrior = { ...fixture.previousSnapshot, caseId: 'c1', id: 'prior-a' };
+  const conflictingPrior = { ...fixture.previousSnapshot, caseId: 'c1', id: 'prior-b', lactateMmolL: 9, sofaScore: 20, il6PgMl: 3000 };
+  await caseRepository.saveSnapshot(firstPrior);
+  await caseRepository.saveSnapshot(conflictingPrior);
+  const values: Record<string, string> = {};
+  const flatten = (object: object, prefix = '') => {
+    for (const [key, value] of Object.entries(object)) {
+      if (['id', 'caseId', 'optedIn', 'dDimerMgLFeu'].includes(key)) continue;
+      const path = prefix + key;
+      if (typeof value === 'object' && value !== null) flatten(value, path + '.');
+      else values[path] = key.endsWith('Timestamp') || key === 'timestamp' ? String(value).slice(0, 16) : String(value);
+    }
+  };
+  flatten(fixture.snapshot);
+  sessionStorage.setItem('sa-aki:assessment-draft:v1:c1', JSON.stringify({ values, step: 6, haEnabled: true }));
+
+  mount();
+
+  expect(await screen.findByText('HA 尚未完成：必要資料或安全門檻未通過')).toBeVisible();
+  expect(screen.getByRole('button', { name: '完成 HA 多專科審查' })).toBeDisabled();
+  expect(screen.getByText(/Chronological same-case baseline/)).toBeInTheDocument();
+});
+
 it.each(['2026-09-21T06:00:30Z', '2026-09-21T06:00:00.375Z'])(
   'evaluates an imported immutable snapshot at exact precision: %s', async timestamp => {
     const onset = '2026-09-21T00:00:00.125Z';

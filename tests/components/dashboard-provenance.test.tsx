@@ -34,6 +34,21 @@ it('keeps duplicate-time cases usable with a strictly earlier fluid comparator a
   expect(within(table).getByRole('row', { name: /6 h.*多筆觀察/ })).toHaveTextContent('2 / 4 mg/dL');
 });
 
+it('keeps an explicit same-time dashboard selection as the diagnosis and SOFA current observation', () => {
+  const earlier: ClinicalSnapshot = { id: 'prior', caseId: patient.id, timestamp: '2026-09-21T00:00:00Z', hoursFromSepsisOnset: 0, actualWeightKg: 70, onEcmo: false, creatinineMgDl: 1, sofaScore: 4 };
+  const severe: ClinicalSnapshot = { ...earlier, id: 'a-severe', timestamp: '2026-09-21T06:00:00Z', hoursFromSepsisOnset: 6, creatinineMgDl: 3, sofaScore: 12 };
+  const normal: ClinicalSnapshot = { ...severe, id: 'z-normal', creatinineMgDl: 1, sofaScore: 2 };
+
+  const severeResults = evaluateDashboard(patient, [earlier, severe, normal], severe.id);
+  expect(severeResults.find(result => result.id === 'aki-staging')?.conclusion).toContain('stage 3');
+  expect(severeResults.find(result => result.id === 'sepsis-assessment')?.evidence.join(' ')).toContain('目前 SOFA：12');
+
+  const normalResults = evaluateDashboard(patient, [earlier, severe, normal], normal.id);
+  expect(normalResults.find(result => result.id === 'aki-staging')?.conclusion).not.toContain('stage 3');
+  expect(normalResults.find(result => result.id === 'sepsis-assessment')?.evidence.join(' ')).toContain('目前 SOFA：2');
+  expect(normalResults.find(result => result.id === 'snapshot-time-provenance')).toBeDefined();
+});
+
 it('orders equal timestamps deterministically without claiming an ambiguous prior bucket is a valid comparator', () => {
   const fixture = haResponseInput();
   const prior = { ...fixture.baseline.previousSnapshot, hemoadsorptionAssessment: undefined };

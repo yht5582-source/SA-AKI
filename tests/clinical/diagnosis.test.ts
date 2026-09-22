@@ -146,6 +146,14 @@ describe('diagnosis decisions', () => {
     expect(results.find(item => item.id === 'aki-staging')?.conclusion).toContain('stage 3');
     expect(observations).toEqual(unchanged);
   });
+  it('honors an explicit current selection at an equal timestamp instead of replacing it with the ID tie-break', () => {
+    const prior = snapshot(0, { creatinineMgDl: 1, sofaScore: 4 });
+    const severe = { ...snapshot(6, { creatinineMgDl: 3, sofaScore: 12 }), id: 'a-severe' };
+    const normal = { ...snapshot(6, { creatinineMgDl: 1, sofaScore: 2 }), id: 'z-normal' };
+    const results = evaluateDiagnosis(caseData, [prior, severe, normal], severe.id);
+    expect(results.find(item => item.id === 'aki-staging')?.conclusion).toContain('stage 3');
+    expect(results.find(item => item.id === 'sepsis-assessment')?.evidence.join(' ')).toContain('目前 SOFA：12');
+  });
   it('does not use unconfirmed estimated-baseline AKI to claim confirmed SA-AKI', () => {
     const results = evaluateDiagnosis({ ...caseData, baselineCreatinineSource: 'estimated' }, [snapshot(24, { creatinineMgDl: 2 })]);
     expect(results.find(item => item.id === 'aki-staging')?.conclusion).toContain('暫定');
@@ -184,13 +192,98 @@ describe('diagnosis decisions', () => {
     expect(result.conclusion).toContain('stage 3');
     expect(result.actions.join(' ')).toContain('不等同新啟動 KRT 適應症');
   });
-  it('does not use planned future or stopped CRRT as current stage 3', () => {
-    for (const extra of [
-      { crrtStartedTimestamp: '2026-09-03T00:00:00Z' },
-      { crrtStartedTimestamp: '2026-09-01T01:00:00Z', crrtStoppedTimestamp: '2026-09-01T02:00:00Z' },
-    ]) {
-      expect(evaluateDiagnosis(caseData, [snapshot(24, extra)]).find(item => item.id === 'aki-staging')?.conclusion).not.toContain('stage 3');
-    }
+  it('carries documented ongoing acute CRRT forward when a later immutable observation omits treatment fields', () => {
+    const result = evaluateDiagnosis(caseData, [
+      snapshot(12, { crrtStartedTimestamp: '2026-09-01T12:00:00Z', crrtMode: 'CVVHDF' }),
+      snapshot(24, { creatinineMgDl: 1, urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).toContain('stage 3');
+    expect(result.evidence.join(' ')).toContain('急性病程已開始 RRT');
+  });
+  it('does not keep current KDIGO stage 3 after a linked documented CRRT stop, while retaining the episode maximum', () => {
+    const result = evaluateDiagnosis(caseData, [
+      snapshot(18, { crrtStartedTimestamp: '2026-09-01T12:00:00Z', crrtStoppedTimestamp: '2026-09-01T18:00:00Z' }),
+      snapshot(24, { creatinineMgDl: 1, urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).not.toContain('stage 3');
+    expect(result.evidence.join(' ')).toContain('本次急性病程歷史最高 KDIGO stage 3');
+  });
+  it('treats repeated documentation of the same CRRT event as corroboration, not conflicting episodes', () => {
+    const result = evaluateDiagnosis(caseData, [
+      snapshot(12, { crrtStartedTimestamp: '2026-09-01T12:00:00Z' }),
+      snapshot(18, { crrtStartedTimestamp: '2026-09-01T12:00:00Z' }),
+      snapshot(24, { creatinineMgDl: 1, urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).toContain('KDIGO stage 3');
+    expect(result.conclusion).not.toContain('暫定');
+    expect(result.missingData.join(' ')).not.toContain('CRRT 病程時間戳互相矛盾');
+  });
+  it('keeps current staging provisional rather than inferring recovery when a start and stop are not reliably linked', () => {
+    const result = evaluateDiagnosis(caseData, [
+      snapshot(12, { crrtStartedTimestamp: '2026-09-01T12:00:00Z' }),
+      snapshot(18, { crrtStoppedTimestamp: '2026-09-01T15:00:00Z' }),
+      snapshot(24, { creatinineMgDl: 1, urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).toContain('資料不足');
+    expect(result.evidence.join(' ')).toContain('本次急性病程歷史最高 KDIGO stage 3');
+    expect(result.missingData.join(' ')).toContain('無法可靠連結');
+  });
+  it('does not treat a planned future CRRT start as performed merely because later time passes without reconfirmation', () => {
+    const result = evaluateDiagnosis(caseData, [
+      snapshot(12, { crrtStartedTimestamp: '2026-09-01T20:00:00Z' }),
+      snapshot(24, { creatinineMgDl: 1, urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).not.toContain('stage 3');
+    expect(result.missingData.join(' ')).toContain('晚於記錄它的觀察');
+  });
+  it('retains uncertainty for conflicting stops on the same CRRT start despite a later start', () => {
+    const result = evaluateDiagnosis(caseData, [
+      snapshot(18, { crrtStartedTimestamp: '2026-09-01T12:00:00Z', crrtStoppedTimestamp: '2026-09-01T16:00:00Z' }),
+      snapshot(20, { crrtStartedTimestamp: '2026-09-01T12:00:00Z', crrtStoppedTimestamp: '2026-09-01T18:00:00Z' }),
+      snapshot(22, { crrtStartedTimestamp: '2026-09-01T20:00:00Z' }),
+      snapshot(24, { creatinineMgDl: 1, urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).toContain('資料不足');
+    expect(result.missingData.join(' ')).toContain('同一 CRRT 開始時間有互相矛盾的停止時間');
+  });
+  it('fails closed for overlapping linked CRRT pairs', () => {
+    const result = evaluateDiagnosis(caseData, [
+      { ...snapshot(20, { crrtStartedTimestamp: '2026-09-01T12:00:00Z', crrtStoppedTimestamp: '2026-09-01T20:00:00Z' }), id: 'pair-12-20' },
+      { ...snapshot(22, { crrtStartedTimestamp: '2026-09-01T18:00:00Z', crrtStoppedTimestamp: '2026-09-01T22:00:00Z' }), id: 'pair-18-22' },
+      snapshot(24, { urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).toContain('資料不足');
+    expect(result.missingData.join(' ')).toContain('成對病程區間');
+  });
+  it.each([
+    ['inside completed interval', '2026-09-01T18:00:00Z'],
+    ['at completed interval boundary', '2026-09-01T20:00:00Z'],
+  ])('fails closed for an unlinked start %s', (_label, start) => {
+    const result = evaluateDiagnosis(caseData, [
+      { ...snapshot(20, { crrtStartedTimestamp: '2026-09-01T12:00:00Z', crrtStoppedTimestamp: '2026-09-01T20:00:00Z' }), id: 'pair-12-20' },
+      { ...snapshot(21, { crrtStartedTimestamp: start }), id: `unlinked-${start}` },
+      snapshot(24, { urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).toContain('資料不足');
+    expect(result.missingData.join(' ')).toContain('已完成病程區間');
+  });
+  it('fails closed for a zero-duration linked CRRT pair', () => {
+    const result = evaluateDiagnosis(caseData, [
+      snapshot(20, { crrtStartedTimestamp: '2026-09-01T20:00:00Z', crrtStoppedTimestamp: '2026-09-01T20:00:00Z' }),
+      snapshot(24, { urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).toContain('資料不足');
+    expect(result.missingData.join(' ')).toContain('成對病程區間');
+  });
+  it('accepts strictly separated sequential linked CRRT pairs without creating ambiguity', () => {
+    const result = evaluateDiagnosis(caseData, [
+      snapshot(18, { crrtStartedTimestamp: '2026-09-01T12:00:00Z', crrtStoppedTimestamp: '2026-09-01T18:00:00Z' }),
+      snapshot(22, { crrtStartedTimestamp: '2026-09-01T20:00:00Z', crrtStoppedTimestamp: '2026-09-01T22:00:00Z' }),
+      snapshot(24, { urineVolumeMl: 720, urineObservationHours: 12, urineNormalizationWeightKg: 60, urineWeightBasis: 'actual' }),
+    ]).find(item => item.id === 'aki-staging')!;
+    expect(result.conclusion).not.toContain('資料不足');
+    expect(result.conclusion).not.toContain('stage 3');
+    expect(result.missingData.join(' ')).not.toContain('成對病程區間');
   });
   it('resolves citations and limits the early/late threshold to app-local scope', () => {
     const results = evaluateDiagnosis(caseData, [snapshot(24, { creatinineMgDl: 2 })]);

@@ -14,8 +14,43 @@ export function sortDecisions(results: DecisionResult[]): DecisionResult[] {
   const priority = { critical: 0, warning: 1, monitor: 2, stable: 3 };
   return [...results].sort((a, b) => priority[a.severity] - priority[b.severity]);
 }
+function prescriptionPerfusionContext(snapshot: ClinicalSnapshot, previous?: ClinicalSnapshot): Pick<PrescriptionInput, 'pressorTrend' | 'perfusionConflictReasons'> {
+  const labeledTrend: PrescriptionInput['pressorTrend'] = snapshot.vasopressorTrend === 'worsening' ? 'rising' : snapshot.vasopressorTrend === 'improving' ? 'falling' : snapshot.vasopressorTrend === 'unchanged' ? 'stable' : undefined;
+  const elapsedHours = previous ? (Date.parse(snapshot.timestamp) - Date.parse(previous.timestamp)) / 3_600_000 : undefined;
+  const comparable = previous?.caseId === snapshot.caseId && elapsedHours !== undefined && elapsedHours > 0 && elapsedHours <= 6;
+  const measuredPressorsRising = comparable
+    && previous.norepinephrineEquivalentMcgKgMin !== undefined
+    && snapshot.norepinephrineEquivalentMcgKgMin !== undefined
+    && snapshot.norepinephrineEquivalentMcgKgMin > previous.norepinephrineEquivalentMcgKgMin;
+  const measuredLactateRising = comparable
+    && previous.lactateMmolL !== undefined
+    && snapshot.lactateMmolL !== undefined
+    && snapshot.lactateMmolL > previous.lactateMmolL;
+  const perfusionSignals: string[] = [];
+  if (snapshot.mapMmHg !== undefined && snapshot.mapMmHg < 65) perfusionSignals.push(`MAP ${snapshot.mapMmHg} mmHg`);
+  if (snapshot.lactateMmolL !== undefined && snapshot.lactateMmolL > 2) perfusionSignals.push(`lactate ${snapshot.lactateMmolL} mmol/L`);
+  if (snapshot.capillaryRefillSeconds !== undefined && snapshot.capillaryRefillSeconds > 3) perfusionSignals.push(`CRT ${snapshot.capillaryRefillSeconds} s`);
+  if (snapshot.skinMottling === true) perfusionSignals.push('mottling present');
+  if (snapshot.peripheralTemperature === 'cool') perfusionSignals.push('cool periphery');
+  if (snapshot.mentalStatus === 'altered' || snapshot.mentalStatus === 'unresponsive') perfusionSignals.push(`mental status ${snapshot.mentalStatus}`);
+  const perfusionConflictReasons: string[] = [];
+  if (snapshot.prescriptionAssessment?.perfusionAdequate === true && perfusionSignals.length) {
+    perfusionConflictReasons.push(`「灌流足夠」與目前量測需核對（${perfusionSignals.join('、')}）；這些訊號各自不等同低灌流診斷`);
+  }
+  if (snapshot.prescriptionAssessment?.perfusionAdequate === true && measuredLactateRising) {
+    perfusionConflictReasons.push(`lactate ${previous!.lactateMmolL} → ${snapshot.lactateMmolL} mmol/L（≤6 h）上升與「灌流足夠」標記需核對；此趨勢是複核訊號，非單獨診斷`);
+  }
+  if (measuredPressorsRising && labeledTrend !== 'rising') {
+    perfusionConflictReasons.push(`NE-equivalent ${previous!.norepinephrineEquivalentMcgKgMin} → ${snapshot.norepinephrineEquivalentMcgKgMin} mcg/kg/min（≤6 h）與標記 ${snapshot.vasopressorTrend ?? '未知'} 不一致`);
+  }
+  return {
+    pressorTrend: measuredPressorsRising ? 'rising' as const : labeledTrend,
+    perfusionConflictReasons: perfusionConflictReasons.length ? perfusionConflictReasons : undefined,
+  };
+}
+
 /** Adapter only: unavailable prescription parameters remain unknown, never inferred approvals. */
-export function prescriptionInput(patient: PatientCase, snapshot: ClinicalSnapshot): PrescriptionInput {
+export function prescriptionInput(patient: PatientCase, snapshot: ClinicalSnapshot, previous?: ClinicalSnapshot): PrescriptionInput {
   return {
     ...snapshot.prescriptionAssessment,
     actualWeightKg: snapshot.crrtDoseWeightBasis === 'actual' ? snapshot.crrtDoseWeightKg : snapshot.actualWeightKg,
@@ -26,7 +61,7 @@ export function prescriptionInput(patient: PatientCase, snapshot: ClinicalSnapsh
     mode: snapshot.crrtMode, observedDeliveredMlKgHr: snapshot.deliveredEffluentMlKgHours,
     downtimeFraction: snapshot.crrtDowntimeHours !== undefined && snapshot.crrtObservationHours !== undefined && snapshot.crrtObservationHours > 0 ? snapshot.crrtDowntimeHours / snapshot.crrtObservationHours : undefined,
     requestedUfNetMlHr: snapshot.ufNetMlHours, anticoagulation: snapshot.anticoagulation,
-    pressorTrend: snapshot.vasopressorTrend === 'worsening' ? 'rising' : snapshot.vasopressorTrend === 'improving' ? 'falling' : snapshot.vasopressorTrend === 'unchanged' ? 'stable' : undefined,
+    ...prescriptionPerfusionContext(snapshot, previous),
   };
 }
 function haResponseReview(current: ClinicalSnapshot, ordered: ClinicalSnapshot[]): DecisionResult[] {
@@ -65,7 +100,7 @@ export function evaluateDashboard(patient: PatientCase, snapshots: ClinicalSnaps
   const selected = selectedId ? sorted.find(snapshot => snapshot.id === selectedId) : sorted.at(-1);
   // Retain every same-instant observation for uncertainty checks while keeping the explicit selection current.
   const ordered = selected ? [...sorted.filter(snapshot => snapshot !== selected && Date.parse(snapshot.timestamp) <= Date.parse(selected.timestamp)), selected] : sorted;
-  const results = evaluateDiagnosis(patient, ordered);
+  const results = evaluateDiagnosis(patient, ordered, selected?.id);
   const current = ordered.at(-1), previous = current ? strictlyEarlierSnapshot(current, ordered) : undefined;
   if (!current) return sortDecisions(results);
   const duplicateTimes = duplicateSnapshotTimes(ordered);
@@ -76,7 +111,7 @@ export function evaluateDashboard(patient: PatientCase, snapshots: ClinicalSnaps
     actions: ['核對所有同時觀察；液體比較僅採唯一且嚴格較早的時間點，模糊比較保留未知。'],
     reassessWithinHours: 0, counterfactuals: ['釐清原始時間與紀錄關係後重新評估；其他危險訊號與床邊處置不可因資料歧義而延誤。'], sourceIds: [],
   });
-  results.push(...evaluateFluid(current, previous), ...evaluateKrtInitiation(current), ...selectKrtModality(current), ...evaluateEcmoConnection(current), ...evaluatePrescriptionSafety(prescriptionInput(patient, current)), ...evaluateLiberation(current, ordered), ...evaluatePrognosis(patient, ordered));
+  results.push(...evaluateFluid(current, previous), ...evaluateKrtInitiation(current), ...selectKrtModality(current), ...evaluateEcmoConnection(current), ...evaluatePrescriptionSafety(prescriptionInput(patient, current, previous)), ...evaluateLiberation(current, ordered), ...evaluatePrognosis(patient, ordered));
   if (current.hemoadsorptionAssessment?.optedIn) {
     results.push(...matchHaDevice({ snapshot: current, previousSnapshot: previous }));
   }

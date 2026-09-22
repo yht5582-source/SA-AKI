@@ -10,6 +10,7 @@ import { allFields, haFields, haExposureFields, stepFields, stepLabels } from '.
 import { clearAssessmentDrafts, readDraft, writeDraft } from './draft';
 import { HaWarning } from '../ha/HaWarning';
 import { haStatusLabel } from '../ha/haPresentation';
+import { strictlyEarlierSnapshot } from '../dashboard/snapshotContext';
 
 function candidateFrom(values: Record<string, string>, caseId: string, snapshotId: string, haEnabled: boolean): Record<string, unknown> {
   const candidate: Record<string, unknown> = { id: snapshotId, caseId };
@@ -76,7 +77,7 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
     const field = allFields.find(item => path === item.key || path.startsWith(item.key + '.'));
     errors[field?.key ?? path] = '請依可接受範圍與精確結構輸入有效資料；JSON 不可加入其他欄位或轉換數字型別，不可將未知設為零或否。';
   }
-  const previous = validation.success ? stored.snapshots.filter(snapshot => Date.parse(snapshot.timestamp) < Date.parse(validation.data.timestamp)).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0] : undefined;
+  const previous = validation.success ? strictlyEarlierSnapshot(validation.data, stored.snapshots) : undefined;
   const ha = validation.success && draft.haEnabled ? evaluateHaEligibility({ snapshot: validation.data, previousSnapshot: previous }) : undefined;
   const haEligible = ha?.status === 'multidisciplinary-review';
   const retainedIncompleteHa = readonly && existing?.hemoadsorptionAssessment?.reviewStatus === 'incomplete';

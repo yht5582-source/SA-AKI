@@ -27,6 +27,8 @@ export interface PrescriptionInput {
   requestedUfNetMlHr?: number;
   pressorTrend?: 'rising' | 'stable' | 'falling';
   perfusionAdequate?: boolean;
+  /** Provenance-preserving contradictions derived from current/recent measurements; never a standalone perfusion diagnosis. */
+  perfusionConflictReasons?: string[];
   observedDeliveredMlKgHr?: number;
   anticoagulation?: Anticoagulation;
   /** Explicit specialist assessment; do not infer from one liver/lactate value. */
@@ -110,11 +112,15 @@ export function calculatePrescription(input: PrescriptionInput): CrrtPrescriptio
     if (!modeMatches) missingData.push('Confirm CVVHD dialysate-only, CVVH replacement-only, or CVVHDF combined flows; SCUF is not a solute-dose mode');
   } else if (!input.mode) missingData.push('Select CVVHD / CVVH / CVVHDF');
 
-  const holdUf = input.pressorTrend !== 'stable' && input.pressorTrend !== 'falling' || input.perfusionAdequate !== true;
+  const perfusionConflict = (input.perfusionConflictReasons?.length ?? 0) > 0;
+  const holdUf = input.pressorTrend !== 'stable' && input.pressorTrend !== 'falling' || input.perfusionAdequate !== true || perfusionConflict;
   const ufNetMlHr = holdUf ? 0 : nonnegative(input.requestedUfNetMlHr) ? input.requestedUfNetMlHr : undefined;
   if (input.pressorTrend === 'rising') warnings.push('升壓劑增加：先暫停淨脫水並重新評估灌流');
   else if (holdUf) warnings.push('UFNET 0 review default: perfusion/pressor stability unconfirmed or inadequate; reassess before removal');
   if (input.pressorTrend === undefined || input.perfusionAdequate === undefined) warnings.push('Missing pressor trend / perfusion assessment blocks checklist completion');
+  if (perfusionConflict) {
+    warnings.push(`量測與人工標記衝突：${input.perfusionConflictReasons!.join('；')}。單一量測不自行確診低灌流；未釐清前 UFNET 歸零並阻擋 checklist。`);
+  }
 
   const result: CrrtPrescription = {
     weightKg, weightBasis: input.weightBasis, weightBasisReason: input.weightBasisReason,
@@ -164,6 +170,8 @@ export function calculatePrescription(input: PrescriptionInput): CrrtPrescriptio
       if (prescription > 30) warnings.push('Compensated nominal prescription exceeds usual 25–30 range; review interruptions and dilution rather than treating higher intensity as a benefit');
     }
   }
+  // The contradiction blocks approval, not transparent arithmetic with the safety-adjusted UFNET 0.
+  if (perfusionConflict) missingData.push('Resolve measured perfusion / pressor contradictions with repeat bedside assessment; do not treat a single value as a definitive perfusion diagnosis');
   if (input.device === 'Prismaflex' || input.device === 'PrisMax') result.operationalDefaults = {
     device: input.device, label: 'operational starting point', editable: true, bloodFlowMlMin: 150,
     note: 'App-local editable discussion default only, not manufacturer-validated: confirm device/software, filter, access, solutions and local protocol. This default never enters the calculation unless explicitly supplied as input.',
@@ -178,6 +186,7 @@ export function calculatePrescription(input: PrescriptionInput): CrrtPrescriptio
 
 export function evaluatePrescriptionSafety(input: PrescriptionInput): DecisionResult[] {
   const prescription = calculatePrescription(input);
+  const perfusionConflict = (input.perfusionConflictReasons?.length ?? 0) > 0;
   const observed = input.observedDeliveredMlKgHr;
   const validObserved = nonnegative(observed);
   const rcaReady = input.citrateContraindication === false && input.citrateProtocolAvailable === true
@@ -188,13 +197,34 @@ export function evaluatePrescriptionSafety(input: PrescriptionInput): DecisionRe
   if (input.bleedingRiskReviewed !== true) anticoagulationMissing.push('Bleeding / coagulation / HIT risk review');
   if (input.systemicAnticoagulationReviewed !== true) anticoagulationMissing.push('Existing systemic anticoagulation and overlap review');
   if (!input.anticoagulation) anticoagulationMissing.push('Explicit anticoagulation selection');
+  const calculatedEvidence = [
+    `處方目標總 effluent：${prescription.totalEffluentMlHr ?? '未計算'}${prescription.totalEffluentMlHr === undefined ? '' : ' mL/h'}（目標與 downtime／稀釋校正後的總量）`,
+    `目前設定 effluent：${prescription.configuredEffluentMlHr ?? '未計算'}${prescription.configuredEffluentMlHr === undefined ? '' : ' mL/h'}（目前輸入流量總和）`,
+    `Filtration fraction：${prescription.filtrationFractionPct ?? '未計算'}${prescription.filtrationFractionPct === undefined ? '' : '%'}`,
+    `安全調整後 UFNET：${prescription.ufNetMlHr ?? '未計算'}${prescription.ufNetMlHr === undefined ? '' : ' mL/h'}`,
+    `處方安全 checklist：${prescription.checklistComplete ? 'complete' : 'incomplete'}；完成也不授權治療。`,
+    prescription.operationalDefaults
+      ? `裝置 operational default：${prescription.operationalDefaults.device}；Qb ${prescription.operationalDefaults.bloodFlowMlMin} mL/min；${prescription.operationalDefaults.label}、可編輯。${prescription.operationalDefaults.note}`
+      : '裝置 operational default：未產生；只有明確選擇支援裝置時才顯示 app-local、可編輯的討論起點。',
+    '本區為 clinician decision support，非機器醫囑；所有流量、裝置、溶液與抗凝均需床邊團隊核實。',
+  ];
   const decisions: DecisionResult[] = [{
     id: 'crrt-prescription-safety', severity: prescription.missingData.length || prescription.warnings.length ? 'warning' : 'monitor',
     conclusion: prescription.totalEffluentMlHr === undefined ? 'Prescription calculation withheld: missing / invalid inputs; not a machine order' : 'Adult prescription arithmetic for clinician review only; not a machine order',
-    evidence: [prescription.deviceNeutralRecommendation, ...prescription.assumptions, ...prescription.warnings],
+    evidence: [
+      ...calculatedEvidence,
+      ...input.perfusionConflictReasons?.map(reason => `衝突來源：${reason}`) ?? [],
+      prescription.deviceNeutralRecommendation,
+      ...prescription.assumptions,
+      ...prescription.warnings,
+    ],
     missingData: prescription.missingData,
-    actions: [...prescription.monitoring, 'Confirm device, solution composition, selected weight/rationale, anticoagulation and pharmacy dosing before marking checklist complete; completion never authorizes therapy'],
-    reassessWithinHours: input.pressorTrend === 'rising' || input.perfusionAdequate === false ? 0.25 : 1,
+    actions: [
+      ...(perfusionConflict ? ['量測與人工標記衝突：立即重新評估 MAP、乳酸／周邊灌流與升壓劑時序；釐清前維持 UFNET 0，不能完成安全 checklist。'] : []),
+      ...prescription.monitoring,
+      'Confirm device, solution composition, selected weight/rationale, anticoagulation and pharmacy dosing before marking checklist complete; completion never authorizes therapy',
+    ],
+    reassessWithinHours: input.pressorTrend === 'rising' || input.perfusionAdequate === false || perfusionConflict ? 0.25 : 1,
     counterfactuals: ['If perfusion deteriorates, hold UFNET and review immediately; if flows, weight, downtime or circuit change, recalculate and review actual delivery'],
     sourceIds: ['APP_CRRT_PRESCRIPTION_V1', 'NSI_CRRT_2016'],
   }, {

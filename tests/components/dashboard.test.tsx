@@ -86,3 +86,76 @@ it('opens the dashboard from case overview and never uses later observations in 
   expect(within(screen.getByRole('table', { name: 'SCr 數據' })).getByRole('row', { name: /6 h.*缺值/ })).toBeVisible();
   expect((screen.getByLabelText('交班摘要') as HTMLTextAreaElement).value).toContain('2026-09-21T00:00:00.000Z');
 });
+
+it('keeps a selected same-time observation aligned across dashboard input, diagnosis, and SOFA cards', async () => {
+  const user = userEvent.setup();
+  const prior = observation(0, { creatinineMgDl: 1, sofaScore: 4 });
+  const severe = { ...observation(6, { creatinineMgDl: 3, sofaScore: 12 }), id: 'a-severe' };
+  const normal = { ...observation(6, { creatinineMgDl: 1, sofaScore: 2 }), id: 'z-normal' };
+  await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [prior, severe, normal] });
+  mount(); await screen.findByRole('heading', { name: '決策首頁' });
+
+  await user.selectOptions(screen.getByLabelText('評估時間點'), severe.id);
+  expect(screen.getByText('目前 SCr').parentElement).toHaveTextContent('3 mg/dL');
+  expect(screen.getByRole('article', { name: /KDIGO stage 3/ })).toBeVisible();
+  expect(screen.getAllByRole('article').find(card => card.getAttribute('data-rule-id') === 'sepsis-assessment')).toHaveTextContent('目前 SOFA：12');
+
+  await user.selectOptions(screen.getByLabelText('評估時間點'), normal.id);
+  expect(screen.getByText('目前 SCr').parentElement).toHaveTextContent('1 mg/dL');
+  expect(screen.getAllByRole('article').find(card => card.getAttribute('data-rule-id') === 'aki-staging')).not.toHaveTextContent('KDIGO stage 3');
+  expect(screen.getAllByRole('article').find(card => card.getAttribute('data-rule-id') === 'sepsis-assessment')).toHaveTextContent('目前 SOFA：2');
+});
+
+it('renders prescription arithmetic and fails closed when measured perfusion conflicts with positive labels', async () => {
+  const confirmations = { device: true, solutionComposition: true, weightBasis: true, anticoagulation: true, pharmacyDosing: true };
+  await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [
+    observation(0, { norepinephrineEquivalentMcgKgMin: 0.1, vasopressorTrend: 'unchanged', mapMmHg: 70, lactateMmolL: 1.5 }),
+    observation(6, {
+      actualWeightKg: 80,
+      mapMmHg: 40,
+      lactateMmolL: 6,
+      norepinephrineEquivalentMcgKgMin: 0.4,
+      vasopressorTrend: 'unchanged',
+      crrtMode: 'CVVHDF',
+      crrtDoseWeightKg: 80,
+      crrtDoseWeightBasis: 'actual',
+      crrtDowntimeHours: 0,
+      crrtObservationHours: 6,
+      ufNetMlHours: 150,
+      anticoagulation: 'regional-citrate',
+      prescriptionAssessment: {
+        adultConfirmed: true,
+        weightBasisReason: '目前實測體重經團隊確認',
+        deliveredTargetMlKgHr: 25,
+        dialysateMlHr: 1000,
+        preReplacementMlHr: 0,
+        postReplacementMlHr: 1000,
+        preBloodPumpMlHr: 0,
+        bloodFlowMlMin: 200,
+        hematocritFraction: 0.3,
+        perfusionAdequate: true,
+        citrateContraindication: false,
+        citrateProtocolAvailable: true,
+        bleedingRiskReviewed: true,
+        systemicAnticoagulationReviewed: true,
+        device: 'PrisMax',
+        confirmations,
+      },
+    }),
+  ] });
+
+  mount();
+  await screen.findByRole('heading', { name: '決策首頁' });
+  const card = screen.getAllByRole('article').find(item => item.getAttribute('data-rule-id') === 'crrt-prescription-safety')!;
+  expect(card).toHaveTextContent('處方目標總 effluent：2000 mL/h');
+  expect(card).toHaveTextContent('目前設定 effluent：2000 mL/h');
+  expect(card).toHaveTextContent('Filtration fraction：11.9%');
+  expect(card).toHaveTextContent('安全調整後 UFNET：0 mL/h');
+  expect(card).toHaveTextContent('處方安全 checklist：incomplete');
+  expect(card).toHaveTextContent('PrisMax');
+  expect(card).toHaveTextContent('150 mL/min');
+  expect(card).toHaveTextContent('量測與人工標記衝突');
+  expect(card).toHaveTextContent('NE-equivalent 0.1 → 0.4');
+  expect(card).toHaveTextContent('立即重新評估');
+  expect(card).toHaveTextContent('非機器醫囑');
+});

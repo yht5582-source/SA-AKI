@@ -186,6 +186,42 @@ describe('prescription safety and review-only operational defaults', () => {
     expect(calculatePrescription(input(patch)).ufNetMlHr).toBe(0);
   });
 
+  it('fails closed when measured perfusion evidence conflicts with a positive clinician label', () => {
+    const conflict = input({
+      requestedUfNetMlHr: 150,
+      device: 'PrisMax',
+      confirmations: { device: true, solutionComposition: true, weightBasis: true, anticoagulation: true, pharmacyDosing: true },
+      perfusionConflictReasons: ['MAP 40 mmHg conflicts with perfusion adequate', 'NE-equivalent 0.1 → 0.4 mcg/kg/min conflicts with stable trend'],
+    });
+
+    const prescription = calculatePrescription(conflict);
+    expect(prescription.ufNetMlHr).toBe(0);
+    expect(prescription.checklistComplete).toBe(false);
+    expect(prescription.warnings.join(' ')).toContain('量測與人工標記衝突');
+    expect(prescription.missingData.join(' ')).toContain('Resolve measured perfusion');
+
+    const decision = evaluatePrescriptionSafety(conflict).find(item => item.id === 'crrt-prescription-safety')!;
+    expect(decision.reassessWithinHours).toBe(0.25);
+    expect(decision.actions.join(' ')).toContain('立即重新評估');
+    expect(decision.evidence.join(' ')).toContain('0.1 → 0.4');
+  });
+
+  it('exposes calculated prescription outputs and editable device defaults in the review card payload', () => {
+    const confirmations = { device: true, solutionComposition: true, weightBasis: true, anticoagulation: true, pharmacyDosing: true };
+    const decision = evaluatePrescriptionSafety(input({ device: 'PrisMax', confirmations })).find(item => item.id === 'crrt-prescription-safety')!;
+    const text = decision.evidence.join(' ');
+
+    expect(text).toContain('處方目標總 effluent：2500 mL/h');
+    expect(text).toContain('目前設定 effluent：2100 mL/h');
+    expect(text).toContain('Filtration fraction：13.1%');
+    expect(text).toContain('安全調整後 UFNET：100 mL/h');
+    expect(text).toContain('處方安全 checklist：complete');
+    expect(text).toContain('PrisMax');
+    expect(text).toContain('150 mL/min');
+    expect(text).toContain('可編輯');
+    expect(text).toContain('非機器醫囑');
+  });
+
   it('reports unknowns instead of manufacturing a prescription from an empty form', () => {
     const result = calculatePrescription({});
     expect(result.totalEffluentMlHr).toBeUndefined();
