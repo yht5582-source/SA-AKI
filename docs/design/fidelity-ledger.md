@@ -7,6 +7,10 @@ Reference surfaces:
 
 Status: **BLOCKED — CI run 35701472321 is functionally green, but a corrected desktop capture and reviewer inspection are still required.**
 
+## CI #4 status — 35702747637
+
+CI #4 passed 14 of 16 Playwright cases, but the two desktop offline cases failed console-health checks before a successful fidelity-artifact upload. Chromium reported a service-worker/modulepreload cross-world resource-mismatch warning during first installation and byte-changed service-worker activation. The pinned Workbox implementation documents immediate registration as a not-recommended pre-window-load timing condition; this is a plausible mechanism, so the follow-up defers application registration until window load without suppressing or filtering the warning. Only the next browser CI can confirm whether that mitigation eliminates Chromium's warning. The visual gate remains blocked until a successful CI run uploads all three required native-size captures and they are reviewed.
+
 ## CI capture evidence — 35701472321
 
 CI run `35701472321` completed its functional gates successfully and produced all three required screenshot files. Manual inspection found both mobile assessment captures (390 × 844 and 430 × 764) usable. The desktop 1586 × 992 image is **invalid as visual-release evidence**: it opened a newly created case with no snapshots, so the dashboard rendered only `尚無時間點；請先新增評估。` instead of the mandated three-column command-center comparison. This does not invalidate the functional CI result, but it does leave visual signoff blocked. The capture must be rerun from a validated case with a timepoint and the resulting desktop image, plus both retained mobile images, must be reviewed before release.
