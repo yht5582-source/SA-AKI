@@ -3,6 +3,13 @@
 .decision-dashboard > select { max-width: 100%; min-height: 44px; padding: 8px; margin: 12px; border: 1px solid var(--border); background: white; border-radius: 6px; }
 .krt-pathway { margin: 18px 0 26px; padding: 20px; background: #f2f8fa; border: 1px solid var(--border); border-radius: 8px; line-height: 1.65; }
 .krt-pathway > h2 { margin: 0 0 14px; }
+.dialysis-advice { padding: 16px; margin: 12px 0 18px; border-left: 5px solid #bb7828; background: #fff8ec; line-height: 1.65; }
+.dialysis-advice h2, .dialysis-advice h3 { font-size: 19px; margin: 0 0 8px; }
+.dialysis-advice p { margin: 6px 0; }
+.dialysis-advice > p:first-of-type { font-size: 18px; font-weight: 750; }
+.dialysis-urgent { border-color: #b52932; background: #fff1f1; }
+.dialysis-defer { border-color: #327a82; background: #eef8f7; }
+.dialysis-advice-note { font-size: 13px; color: var(--muted); }
 .krt-pathway-stages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .krt-pathway-stages > section { min-width: 0; padding: 16px; background: white; border-top: 4px solid #327a82; overflow-wrap: anywhere; }
 .krt-pathway-stages > section.krt-check { border-color: #bb7828; }

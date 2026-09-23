@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { DecisionResult } from '../../clinical/types';
+import { dialysisAdvice } from '../../clinical/dialysisAdvice';
 import { stepFields } from '../assessment/steps/fields';
 
 const fieldTargets: readonly (readonly [string, string])[] = [
@@ -26,8 +27,10 @@ export function KrtPathway({ decisions, caseId }: { decisions: DecisionResult[];
   const confirmed = indication.severity === 'critical';
   const danger = indication.conclusion.startsWith('urgent confirmation');
   const positives = indication.evidence.filter(item => /有相符|明確尿毒|臨床已確認|毒理已確認|專科已確認/.test(item));
+  const advice = dialysisAdvice(indication);
   return <section className="krt-pathway" aria-label="AKI 與 KRT 決策">
     <h2>AKI → KRT → 模式</h2>
+    <section className={`dialysis-advice dialysis-${advice.tone}`} aria-label="是否進行透析"><h3>現在是否建議透析？</h3><p>{advice.text}</p></section>
     <div className="krt-pathway-stages">
       <section><h3>1. AKI 評估</h3><p>{aki.conclusion}</p><small>AKI 分期與單次 SCr、BUN、少尿、SOFA 或升壓劑劑量均不構成獨立 KRT 適應症。</small></section>
       <section className={confirmed ? 'krt-urgent' : danger ? 'krt-check' : ''}><h3>2. 是否達 KRT 適應症</h3><p className="krt-answer">{confirmed ? '立即評估 KRT：已有需專科複核的確定危險條件' : danger ? '立即確認 KRT 危險訊號與治療難治性' : indication.conclusion.includes('資料不足') ? '目前無已確立 KRT 適應症；資料不足不等於排除適應症' : '目前無已確立 KRT 適應症；持續監測重評'}</p>

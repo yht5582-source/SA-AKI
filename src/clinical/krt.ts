@@ -2,7 +2,7 @@ import type { ClinicalSnapshot, DecisionResult } from './types';
 import { resolveRuleSources } from './sources';
 
 /** Pure triage support. Numeric screens establish urgency, never refractoriness. */
-export function evaluateKrtInitiation(s: ClinicalSnapshot): DecisionResult[] {
+export function evaluateKrtInitiation(s: Partial<ClinicalSnapshot>): DecisionResult[] {
   const finite = (value: number | undefined): value is number => value !== undefined && Number.isFinite(value);
   const highK = finite(s.potassiumMmolL) && s.potassiumMmolL >= 6;
   const acidemia = finite(s.arterialPh) && s.arterialPh <= 7.2;

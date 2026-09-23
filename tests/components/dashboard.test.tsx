@@ -30,6 +30,7 @@ it('shows the AKI to KRT decision first without suggesting a mode from severe AK
   await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [observation(6, { creatinineMgDl: 3, potassiumMmolL: 4, arterialPh: 7.4, pulmonaryEdema: false, uremicManifestations: [], lifeThreateningElectrolyteDisturbance: false, dialyzableToxin: false, requiresControlledSodiumCorrection: false, norepinephrineEquivalentMcgKgMin: 0.4, hemodynamicTolerance: 'unstable', mapMmHg: 59 })] });
   mount();
   const pathway = await screen.findByRole('region', { name: 'AKI 與 KRT 決策' });
+  expect(within(pathway).getByRole('region', { name: '是否進行透析' })).toHaveTextContent('目前不建議開始透析');
   expect(within(pathway).getByText(/KDIGO stage 3/)).toBeVisible();
   expect(within(pathway).getByText(/目前無已確立 KRT 適應症/)).toBeVisible();
   expect(within(pathway).getByText(/尚不選定 KRT 模式/)).toBeVisible();
@@ -41,6 +42,7 @@ it('shows conditional CRRT review and mechanism choices only after a confirmed K
   await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [observation(6, { creatinineMgDl: 3, potassiumMmolL: 6.5, refractoryHyperkalemia: true, hemodynamicTolerance: 'unstable', mapMmHg: 56, norepinephrineEquivalentMcgKgMin: 0.3, vasopressorTrend: 'worsening', lactateMmolL: 3 })] });
   mount();
   const pathway = await screen.findByRole('region', { name: 'AKI 與 KRT 決策' });
+  expect(within(pathway).getByRole('region', { name: '是否進行透析' })).toHaveTextContent('建議立即評估啟動透析');
   expect(within(pathway).getByText(/立即評估 KRT/)).toBeVisible();
   expect(within(pathway).getByText(/有相符高血鉀.*難治/)).toBeVisible();
   expect(within(pathway).getByText(/CRRT review/)).toBeVisible();
