@@ -15,6 +15,7 @@ test('390×844 eight-step wizard saves a real timepoint without document overflo
   await expect(page.getByRole('heading', { name: 'AKI 評估', exact: true })).toBeVisible();
   await expect(page.getByLabel('目前 SCr', { exact: true })).toBeFocused();
   await fillObservation(page);
+  await expect(page.getByRole('region', { name: '是否進行透析' })).toContainText('建議立即評估啟動透析');
   for (const [index, label] of ['感染／休克', 'AKI 評估', '灌流／液體', 'KRT', '模式／ECMO', '處方', '選配 HA', '監測／脫離'].entries()) {
     await step(page, label);
     await expect(page.getByRole('progressbar', { name: '評估進度' })).toHaveAttribute('aria-valuenow', String(index + 1));
@@ -41,6 +42,7 @@ test('390×844 KRT summary explains conditional CRRT and sends missing findings 
   await saveObservation(page);
   await page.getByRole('link', { name: '決策首頁', exact: true }).click();
   const pathway = page.getByRole('region', { name: 'AKI 與 KRT 決策' });
+  await expect(pathway.getByRole('region', { name: '是否進行透析' })).toContainText('建議立即評估啟動透析');
   await expect(pathway).toContainText('立即評估 KRT');
   await expect(pathway).toContainText('CRRT review');
   await pathway.getByText('CRRT 機制怎麼選？').click();

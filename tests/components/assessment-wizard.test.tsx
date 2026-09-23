@@ -48,6 +48,41 @@ it('lets the user jump from a missing-data prompt to the exact field that needs 
   expect(screen.getByLabelText('目前 SCr')).toHaveFocus();
 });
 
+it('shows a live dialysis recommendation for a confirmed emergency before saving', async () => {
+  const user = userEvent.setup(); mount();
+  await screen.findByRole('heading', { name: '感染／休克' });
+  await user.click(step('KRT'));
+  expect(screen.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('資料不足');
+  await user.type(screen.getByLabelText('鉀'), '6.5');
+  await user.selectOptions(screen.getByLabelText('難治性高血鉀'), 'true');
+  expect(screen.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('建議立即評估啟動透析');
+  expect((await caseRepository.getCase('c1'))?.snapshots).toHaveLength(0);
+});
+
+it('distinguishes an unconfirmed danger from a fully checked decision to defer dialysis', async () => {
+  const user = userEvent.setup(); mount();
+  await screen.findByRole('heading', { name: '感染／休克' });
+  await user.click(step('KRT'));
+  await user.type(screen.getByLabelText('鉀'), '6.5');
+  expect(screen.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('立即確認是否需要透析');
+  await user.clear(screen.getByLabelText('鉀'));
+  await user.type(screen.getByLabelText('鉀'), '4.2');
+  await user.type(screen.getByLabelText('動脈 pH'), '7.4');
+  for (const name of ['肺水腫', '危及生命的電解質異常', '可透析毒物']) await user.selectOptions(screen.getByLabelText(name), 'false');
+  expect(screen.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('資料不足');
+});
+
+it('only suggests monitoring without dialysis after explicitly negative emergency findings', async () => {
+  sessionStorage.setItem('sa-aki:assessment-draft:v1:c1', JSON.stringify({ step: 3, haEnabled: false, values: {
+    potassiumMmolL: '4.2', arterialPh: '7.4', pulmonaryEdema: 'false', uremicManifestations: '[]',
+    lifeThreateningElectrolyteDisturbance: 'false', dialyzableToxin: 'false', requiresControlledSodiumCorrection: 'false',
+  } }));
+  mount();
+  await screen.findByRole('heading', { name: 'KRT' });
+  expect(screen.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('目前不建議開始透析');
+  expect((await caseRepository.getCase('c1'))?.snapshots).toHaveLength(0);
+});
+
 it('navigates the eight ordered steps and preserves numeric zero separately from unknown across navigation and reload', async () => {
   const user = userEvent.setup(); const view = mount();
   await screen.findByRole('heading', { name: '感染／休克' });

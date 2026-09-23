@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { ClinicalSnapshot } from '../../clinical/types';
 import { evaluateHaEligibility } from '../../clinical/ha';
+import { evaluateKrtInitiation } from '../../clinical/krt';
+import { dialysisAdvice } from '../../clinical/dialysisAdvice';
+import { z } from 'zod';
 import { caseExportSchema, clinicalSnapshotSchema } from '../../data/schema';
 import { caseRepository, type StoredCase } from '../../data/caseRepository';
 import { Stepper } from '../../components/Stepper';
@@ -11,6 +14,21 @@ import { clearAssessmentDrafts, readDraft, writeDraft } from './draft';
 import { HaWarning } from '../ha/HaWarning';
 import { haStatusLabel } from '../ha/haPresentation';
 import { strictlyEarlierSnapshot } from '../dashboard/snapshotContext';
+
+// Validate only the measurements used by KRT triage; other required form fields
+// must not delay a live emergency screen or be silently replaced by clinical defaults.
+const krtPreviewSchema = z.object({
+  potassiumMmolL: z.number().finite().nonnegative().optional(),
+  arterialPh: z.number().finite().min(6.5).max(8).optional(),
+  bicarbonateMmolL: z.number().finite().nonnegative().optional(),
+  pao2Fio2RatioMmHg: z.number().finite().nonnegative().optional(),
+  respiratorySupport: z.enum(['room-air', 'conventional-oxygen', 'high-flow-nasal-oxygen', 'noninvasive-ventilation', 'invasive-ventilation']).optional(),
+  pulmonaryEdema: z.boolean().optional(),
+  uremicManifestations: z.array(z.enum(['encephalopathy', 'pericarditis', 'bleeding', 'other'])).optional(),
+  refractoryHyperkalemia: z.boolean().optional(), refractoryAcidemia: z.boolean().optional(), refractoryPulmonaryEdema: z.boolean().optional(),
+  lifeThreateningElectrolyteDisturbance: z.boolean().optional(), dialyzableToxin: z.boolean().optional(),
+  requiresControlledSodiumCorrection: z.boolean().optional(),
+});
 
 function candidateFrom(values: Record<string, string>, caseId: string, snapshotId: string, haEnabled: boolean): Record<string, unknown> {
   const candidate: Record<string, unknown> = { id: snapshotId, caseId };
@@ -74,6 +92,9 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   // Saved observations are immutable inputs to validation/rules, never round-tripped through form strings.
   const candidate = existing ?? candidateFrom(draft.values, stored.case.id, id, draft.haEnabled);
   const validation = clinicalSnapshotSchema.safeParse(candidate);
+  const krtPreview = krtPreviewSchema.safeParse(candidate);
+  const krtIndication = krtPreview.success ? evaluateKrtInitiation(krtPreview.data)[0] : undefined;
+  const krtAdvice = krtIndication && dialysisAdvice(krtIndication);
   const errors: Record<string, string> = {};
   if (!validation.success) for (const issue of validation.error.issues) {
     const path = issue.path.join('.');
@@ -118,6 +139,12 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
     {location.state?.draftCleanupFailed === true && <p role="status" className="field-error">時間點已儲存，但瀏覽器無法清除目前分頁的評估草稿；草稿可能仍保留。請關閉分頁／瀏覽工作階段，並依機構政策確認或清除網站資料。</p>}
     {readonly && <p>已儲存時間點（唯讀）</p>}
     {!review && <Stepper labels={stepLabels} current={draft.step} onChange={selectStep}/>}
+    <section className={`dialysis-advice dialysis-${krtAdvice?.tone ?? 'check'}`} aria-label="是否進行透析"><h2>現在是否建議透析？</h2>
+      <p>{krtAdvice?.text ?? '透析評估輸入值無效，無法判定是否需要透析；請修正標示錯誤的資料，危急處置不等待填表。'}</p>
+      {krtIndication?.missingData.length ? <details><summary>查看待確認的透析指徵資料（{krtIndication.missingData.length}）</summary><ul>{krtIndication.missingData.map(item => <li key={item}>{item}</li>)}</ul></details> : null}
+      <p className="dialysis-advice-note">本頁是未儲存資料的即時篩檢；透析啟動及 CRRT 模式需床邊團隊確認，非自動醫囑。</p>
+      {!readonly && draft.step !== 3 && <button type="button" className="button" onClick={() => selectStep(3)}>前往填寫透析指徵</button>}
+    </section>
     <div className="assessment-workspace"><section className="assessment-input"><h2 ref={heading} tabIndex={-1}>{review ? '最終檢視' : stepLabels[draft.step]}</h2>
       {(draft.step === 6 || draft.haEnabled) && <HaWarning/>}
       {draft.step === 5 && <p>處方算式與 RCA 僅供臨床團隊審查，非機器醫囑；所有確認均須明確輸入，未知不代表同意或無禁忌。不得據此自動設定機器或 citrate／calcium 輸注。</p>}
