@@ -62,12 +62,14 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   const existing = stored.snapshots.find(snapshot => snapshot.id === snapshotId);
   const [draft, setDraft] = useState(() => {
     const initial = existing ? { values: valuesFrom(existing), step: 0, haEnabled: existing.hemoadsorptionAssessment?.optedIn === true } : readDraft(stored.case.id);
-    return new URLSearchParams(location.search).get('step') === 'ha' ? { ...initial, step: 6 } : initial;
+    const params = new URLSearchParams(location.search);
+    const fieldStep = !existing ? stepFields.findIndex(fields => fields.some(field => field.key === params.get('field'))) : -1;
+    return fieldStep >= 0 ? { ...initial, step: fieldStep } : params.get('step') === 'ha' ? { ...initial, step: 6 } : initial;
   });
   const [id] = useState(() => crypto.randomUUID()); const [review, setReview] = useState(!!existing); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [haReviewed, setHaReviewed] = useState(false);
   const [saveIncompleteHa, setSaveIncompleteHa] = useState(false);
   const [stepFocusRequest, setStepFocusRequest] = useState(0);
-  const fieldFocusRequest = useRef<string | undefined>(undefined);
+  const fieldFocusRequest = useRef<string | undefined>(!existing ? new URLSearchParams(location.search).get('field') ?? undefined : undefined);
   const heading = useRef<HTMLHeadingElement>(null); const readonly = !!existing;
   // Saved observations are immutable inputs to validation/rules, never round-tripped through form strings.
   const candidate = existing ?? candidateFrom(draft.values, stored.case.id, id, draft.haEnabled);

@@ -134,6 +134,8 @@ export const evidenceSources: EvidenceRegistry = {
       { ruleId: 'ha-not-routine', scope: 'Suggest against blood purification in adult sepsis/septic shock.', strength: 'Conditional; very low certainty' },
       { ruleId: 'pmx-not-routine', scope: 'Suggest against polymyxin B hemoperfusion in adult sepsis/septic shock.', strength: 'Conditional; low certainty' },
       { ruleId: 'fluid-dynamic-assessment', scope: 'Prefer dynamic fluid-response measures to examination or static measures alone.', strength: 'Conditional; low certainty' },
+      { ruleId: 'krt-emergency-indications', scope: 'For sepsis/septic shock with AKI and no definitive RRT indication, suggest against RRT. This guideline does not validate app-local numeric urgent-confirmation screens.', strength: 'Conditional; moderate certainty' },
+      { ruleId: 'krt-modality-selection', scope: 'For sepsis/septic shock with AKI warranting RRT, suggest either continuous or intermittent RRT; patient-specific mode selection relies on other guidance and bedside tolerance.', strength: 'Conditional; low certainty' },
     ],
   },
   ADQI_28: {
@@ -206,7 +208,7 @@ export const evidenceSources: EvidenceRegistry = {
       { ruleId: 'aki-prognosis-review', scope: 'Sections 2.2–2.3: review susceptibilities/exposures and serial SCr/urine; evaluate kidney resolution or new/worsening CKD at 3 months. Does not validate the app trajectory labels or individual prognosis calculation.', strength: '2.3.4 Not Graded' },
       { ruleId: 'krt-emergency-indications', scope: 'Sections 5.1.1–5.1.2: life-threatening fluid/electrolyte/acid-base changes and clinical trends, not isolated BUN/SCr thresholds.', strength: 'Not Graded' },
       { ruleId: 'krt-modality-selection', scope: 'Sections 5.6.1–5.6.3: continuous and intermittent therapies are complementary; CRRT suggested for instability and brain injury/raised ICP. Rationale discusses rapid IHD clearance and hybrid SLED. No overall survival superiority.', strength: '5.6.1 Not Graded; 5.6.2–5.6.3 2B' },
-      { ruleId: 'krt-modality-mechanisms', scope: 'Chapter 5.6/Table 21: diffusion in CVVHD, convection in CVVH, both in CVVHDF; mechanism is not proof of survival superiority.' },
+      { ruleId: 'krt-modality-mechanisms', scope: 'Chapter 5.6/Table 21: diffusion in CVVHD, convection in CVVH, both in CVVHDF; SCUF has minimal solute clearance and is mainly a fluid-removal technique. Mechanism is not proof of survival superiority.' },
       { ruleId: 'crrt-delivered-dose', scope: 'Section 5.8.4: delivered effluent 20–25 mL/kg/h, with higher prescribed volume often needed.', strength: '1A; prescription compensation Not Graded' },
       { ruleId: 'crrt-anticoagulation', scope: 'Sections 5.3.1–5.3.3 and rationale: individualized bleeding/coagulation/systemic anticoagulation assessment; suggest regional citrate in CRRT without contraindications and with an established protocol. Monitor acid-base, sodium and total/ionized calcium; impaired citrate metabolism needs careful review.', strength: '5.3.1 Not Graded; 5.3.2.2 2B; 5.3.3.1 2C' },
     ],
