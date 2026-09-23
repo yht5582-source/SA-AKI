@@ -56,6 +56,7 @@ it('shows a live dialysis recommendation for a confirmed emergency before saving
   await user.type(screen.getByLabelText('鉀'), '6.5');
   await user.selectOptions(screen.getByLabelText('難治性高血鉀'), 'true');
   expect(screen.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('建議立即評估啟動透析');
+  expect(screen.getByRole('complementary', { name: '目前判斷' })).toHaveTextContent('立即評估透析');
   expect((await caseRepository.getCase('c1'))?.snapshots).toHaveLength(0);
 });
 
