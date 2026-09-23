@@ -41,10 +41,10 @@ export function selectKrtModality(s: ClinicalSnapshot): DecisionResult[] {
       '連續監測耐受性與治療中斷；循環、氧合、神經或電解質惡化時立即重評，不因機器可用就開始 CRRT'],
     reassessWithinHours: unstable || conflict || perfusionConcern ? 0.25 : 1,
     counterfactuals: ['若循環轉穩且需快速清除，可重新討論 IHD／PIRRT；若 ICP 風險、循環惡化或需要精密控制，重新討論 CRRT；模式偏好永不構成啟動適應症'],
-    sourceIds: ['KDIGO_2012', 'APP_KRT_SAFETY_V1'],
+    sourceIds: ['KDIGO_2012', 'SSC_2026', 'APP_KRT_SAFETY_V1'],
   }, {
     id: 'krt-modality-mechanisms', severity: 'monitor', conclusion: 'CVVHD／CVVH／CVVHDF 是機制選項，無已證實存活優勢',
-    evidence: ['CVVHD 以擴散為主；CVVH 以對流為主；CVVHDF 結合擴散與對流；機制不等同臨床結局優越'],
+    evidence: ['CVVHD 以擴散為主；CVVH 以對流為主；CVVHDF 結合擴散與對流；SCUF 主要為液體移除、溶質清除有限；機制不等同臨床結局優越'],
     missingData: [], actions: ['由臨床醫師依溶質、液體目標及可實際交付劑量選擇；此比較非機器處方'],
     counterfactuals: ['若有效交付下降、頻繁停機或清除需求改變，重評方法與交付，不因模式名稱推論存活效益'], sourceIds: ['KDIGO_2012'],
   }];

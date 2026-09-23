@@ -1,6 +1,22 @@
 .decision-dashboard, .ha-workspace { min-width: 0; }
 .decision-dashboard > nav, .ha-workspace > nav { align-items: center; margin: 16px 0; }
 .decision-dashboard > select { max-width: 100%; min-height: 44px; padding: 8px; margin: 12px; border: 1px solid var(--border); background: white; border-radius: 6px; }
+.krt-pathway { margin: 18px 0 26px; padding: 20px; background: #f2f8fa; border: 1px solid var(--border); border-radius: 8px; line-height: 1.65; }
+.krt-pathway > h2 { margin: 0 0 14px; }
+.krt-pathway-stages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.krt-pathway-stages > section { min-width: 0; padding: 16px; background: white; border-top: 4px solid #327a82; overflow-wrap: anywhere; }
+.krt-pathway-stages > section.krt-check { border-color: #bb7828; }
+.krt-pathway-stages > section.krt-urgent { border-color: #b52932; }
+.krt-pathway h3 { font-size: 17px; margin: 0 0 10px; }
+.krt-pathway h4 { margin: 14px 0 8px; }
+.krt-pathway .krt-answer { font-weight: 700; }
+.krt-pathway details { padding: 6px 0; }
+.krt-pathway summary { cursor: pointer; min-height: 44px; }
+.krt-pathway-missing { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); }
+.krt-missing { padding-left: 20px; }
+.krt-missing li { margin-bottom: 10px; }
+.krt-missing a { display: inline-flex; min-height: 44px; align-items: center; margin-left: 10px; font-weight: 700; }
+.krt-pathway-caveat { color: var(--muted); font-size: 13px; }
 .dashboard-columns { display: grid; grid-template-columns: 33% 38% 29%; border: 1px solid var(--border); background: white; }
 .dashboard-input, .dashboard-decisions, .dashboard-trends { min-width: 0; padding: 18px; overflow-wrap: anywhere; }
 .dashboard-decisions, .dashboard-trends { border-left: 1px solid var(--border); }
@@ -40,6 +56,9 @@
 .ha-gates > section { border-top: 1px solid var(--border); padding-top: 16px; overflow-wrap: anywhere; }
 .ha-gates ul { padding-left: 20px; }
 @media (max-width: 1050px) {
+  .krt-pathway-stages { grid-template-columns: 1fr; }
+  .krt-pathway { padding: 14px; }
+  .krt-missing a { margin-left: 0; }
   .dashboard-columns { display: block; border: 0; background: transparent; }
   .dashboard-input, .dashboard-decisions, .dashboard-trends { padding: 16px 0; border: 0; }
   .ha-gates { grid-template-columns: 1fr; }

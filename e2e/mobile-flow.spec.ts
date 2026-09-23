@@ -32,3 +32,23 @@ test('390×844 eight-step wizard saves a real timepoint without document overflo
   await expect(page.getByText(`匿名病例 ${created.code}`, { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
+
+test('390×844 KRT summary explains conditional CRRT and sends missing findings to a new editable observation', async ({ page }) => {
+  await createAnonymousCase(page);
+  await fillObservation(page);
+  await step(page, '模式／ECMO');
+  await page.getByLabel('血流動力耐受性', { exact: true }).selectOption('unstable');
+  await saveObservation(page);
+  await page.getByRole('link', { name: '決策首頁', exact: true }).click();
+  const pathway = page.getByRole('region', { name: 'AKI 與 KRT 決策' });
+  await expect(pathway).toContainText('立即評估 KRT');
+  await expect(pathway).toContainText('CRRT review');
+  await pathway.getByText('CRRT 機制怎麼選？').click();
+  await expect(pathway).toContainText('SCUF：以液體移除為主，不提供充分溶質清除');
+  await expectNoHorizontalOverflow(page);
+  await pathway.getByRole('link', { name: '前往填寫尿毒併發症' }).click();
+  await expect(page.getByRole('heading', { name: 'KRT', exact: true })).toBeVisible();
+  await expect(page.getByLabel('尿毒性腦病變')).toBeFocused();
+  await expect(page.getByRole('button', { name: '上一步', exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});

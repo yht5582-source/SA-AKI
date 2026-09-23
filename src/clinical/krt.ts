@@ -63,7 +63,7 @@ export function evaluateKrtInitiation(s: ClinicalSnapshot): DecisionResult[] {
     ],
     reassessWithinHours: urgent ? 0 : danger || missingData.length > 0 ? 0.25 : 1,
     counterfactuals: ['若新出現／確認難治高血鉀、嚴重酸血症、肺水腫／低氧、尿毒併發症、毒物或特殊鈉校正需求，立即轉 urgent KRT evaluation；若改善則維持重評，不因 BUN／SCr 或少尿單獨升階'],
-    sourceIds: ['KDIGO_2012', 'STARRT_AKI_2020', 'APP_KRT_SAFETY_V1'],
+    sourceIds: ['KDIGO_2012', 'SSC_2026', 'STARRT_AKI_2020', 'APP_KRT_SAFETY_V1'],
   };
   resolveRuleSources(decision.id, decision.sourceIds);
   return [decision];

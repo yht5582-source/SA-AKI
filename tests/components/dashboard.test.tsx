@@ -26,6 +26,45 @@ it('integrates real engines, severity-sorts cards, and exposes every decision se
   expect(screen.queryByText('建議立即使用 HA')).not.toBeInTheDocument();
 });
 
+it('shows the AKI to KRT decision first without suggesting a mode from severe AKI or pressor exposure alone', async () => {
+  await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [observation(6, { creatinineMgDl: 3, potassiumMmolL: 4, arterialPh: 7.4, pulmonaryEdema: false, uremicManifestations: [], lifeThreateningElectrolyteDisturbance: false, dialyzableToxin: false, requiresControlledSodiumCorrection: false, norepinephrineEquivalentMcgKgMin: 0.4, hemodynamicTolerance: 'unstable', mapMmHg: 59 })] });
+  mount();
+  const pathway = await screen.findByRole('region', { name: 'AKI 與 KRT 決策' });
+  expect(within(pathway).getByText(/KDIGO stage 3/)).toBeVisible();
+  expect(within(pathway).getByText(/目前無已確立 KRT 適應症/)).toBeVisible();
+  expect(within(pathway).getByText(/尚不選定 KRT 模式/)).toBeVisible();
+  expect(within(pathway).queryByText(/建議使用 CVVHDF|啟動 CRRT/)).not.toBeInTheDocument();
+});
+
+it('shows conditional CRRT review and mechanism choices only after a confirmed KRT indication', async () => {
+  const user = userEvent.setup();
+  await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [observation(6, { creatinineMgDl: 3, potassiumMmolL: 6.5, refractoryHyperkalemia: true, hemodynamicTolerance: 'unstable', mapMmHg: 56, norepinephrineEquivalentMcgKgMin: 0.3, vasopressorTrend: 'worsening', lactateMmolL: 3 })] });
+  mount();
+  const pathway = await screen.findByRole('region', { name: 'AKI 與 KRT 決策' });
+  expect(within(pathway).getByText(/立即評估 KRT/)).toBeVisible();
+  expect(within(pathway).getByText(/有相符高血鉀.*難治/)).toBeVisible();
+  expect(within(pathway).getByText(/CRRT review/)).toBeVisible();
+  await user.click(within(pathway).getByText('CRRT 機制怎麼選？'));
+  expect(within(pathway).getByText(/^CVVHD：.*擴散/)).toBeVisible();
+  expect(within(pathway).getByText(/SCUF.*液體.*不提供充分溶質清除/)).toBeVisible();
+});
+
+it('links each missing KRT and mode assessment to the corresponding editable step and focuses the KRT field', async () => {
+  const user = userEvent.setup();
+  await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [observation(6, { creatinineMgDl: 3 })] });
+  mount();
+  const pathway = await screen.findByRole('region', { name: 'AKI 與 KRT 決策' });
+  expect(within(pathway).getByText(/資料不足不等於排除適應症/)).toBeVisible();
+  const links = within(pathway).getAllByRole('link', { name: /前往填寫/ });
+  expect(links.length).toBeGreaterThan(3);
+  const potassium = within(pathway).getByRole('link', { name: /前往填寫血鉀/ });
+  expect(potassium).toHaveAttribute('href', '/SA-AKI/case/dashboard/assessment?field=potassiumMmolL');
+  expect(within(pathway).getByRole('link', { name: /前往填寫血流動力耐受性/ })).toHaveAttribute('href', '/SA-AKI/case/dashboard/assessment?field=hemodynamicTolerance');
+  await user.click(potassium);
+  expect(await screen.findByRole('heading', { name: 'KRT' })).toBeVisible();
+  expect(screen.getByLabelText('鉀')).toHaveFocus();
+});
+
 it('plots all eight measures with gaps, explicit baselines, normalized urine and genuine zero values', async () => {
   const user = userEvent.setup();
   await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [observation(0, { creatinineMgDl: 2, urineVolumeMl: 70, urineObservationHours: 2, urineNormalizationWeightKg: 70, urineWeightBasis: 'actual', lactateMmolL: 2, norepinephrineEquivalentMcgKgMin: 0, cumulativeFluidBalanceMl: 0, sofaScore: 4, deliveredEffluentMlKgHours: 20 }), observation(6), observation(12, { creatinineMgDl: 4 })] });
