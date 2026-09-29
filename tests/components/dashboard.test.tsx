@@ -46,9 +46,21 @@ it('shows conditional CRRT review and mechanism choices only after a confirmed K
   expect(within(pathway).getByText(/立即評估 KRT/)).toBeVisible();
   expect(within(pathway).getByText(/有相符高血鉀.*難治/)).toBeVisible();
   expect(within(pathway).getByText(/CRRT review/)).toBeVisible();
+  expect(within(pathway).getByText(/資料不足，暫不選定透析模式/)).toBeVisible();
   await user.click(within(pathway).getByText('CRRT 機制怎麼選？'));
   expect(within(pathway).getByText(/^CVVHD：.*擴散/)).toBeVisible();
   expect(within(pathway).getByText(/SCUF.*液體.*不提供充分溶質清除/)).toBeVisible();
+});
+
+it('recommends a modality only after the indication and all required mode assessments are confirmed', async () => {
+  await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots: [observation(6, {
+    potassiumMmolL: 6.5, refractoryHyperkalemia: true, hemodynamicTolerance: 'unstable', mapMmHg: 56,
+    norepinephrineEquivalentMcgKgMin: 0.3, vasopressorTrend: 'worsening', lactateMmolL: 3,
+    intracranialPressureRisk: false, rapidSoluteClearanceNeeded: false, preciseFluidElectrolyteControlNeeded: false,
+  })] });
+  mount();
+  const pathway = await screen.findByRole('region', { name: 'AKI 與 KRT 決策' });
+  expect(within(pathway).getByText(/優先討論 CRRT/)).toBeVisible();
 });
 
 it('links each missing KRT and mode assessment to the corresponding editable step and focuses the KRT field', async () => {

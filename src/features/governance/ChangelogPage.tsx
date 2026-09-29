@@ -6,6 +6,7 @@ export function ChangelogPage() {
     </div>
     <section className="governance-section" aria-labelledby="unreleased-heading">
       <h3 id="unreleased-heading">未發布</h3>
+      <p>確認需透析後，在評估頁即時顯示模式討論；模式參數未齊時逐項引導補填，資料齊全才提出 CRRT／IHD／PIRRT 偏好。實際 CRRT 停止時間移至監測／脫離步驟，停止尚未發生時留空。</p>
       <p>同一事件／給藥／TDM 的衝突修訂只計一次，爭議細節維持未知，不誤判為反覆事件；歷史用藥監測卡與來源不確定警示並存，不能據此授權治療或自動調整劑量。</p>
       <p>修正跨時點 HA 療程追蹤：未重填不等於停機，明確停止會保留；重複／衝突需立即重評，歷史給藥、TDM 與不良事件不會因後續省略而消失。</p>
       <p>補齊 CRRT 算式／RCA 的明確評估輸入與五項確認，以及呼吸、P/F、VExUS、尿毒併發症、ECMO 抗凝及 HA 暴露紀錄；保留未知與非自動醫囑界線。新增欄位與 schema version 1 相容。</p>

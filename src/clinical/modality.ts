@@ -2,7 +2,7 @@ import type { ClinicalSnapshot, DecisionResult } from './types';
 import { resolveRuleSources } from './sources';
 
 /** Options are conditional on a separately confirmed KRT indication. */
-export function selectKrtModality(s: ClinicalSnapshot): DecisionResult[] {
+export function selectKrtModality(s: Partial<ClinicalSnapshot>): DecisionResult[] {
   const unstable = s.hemodynamicTolerance === 'unstable' || (s.mapMmHg !== undefined && s.mapMmHg < 65) || s.vasopressorTrend === 'worsening';
   const perfusionConcern = (s.lactateMmolL !== undefined && s.lactateMmolL > 2)
     || (s.capillaryRefillSeconds !== undefined && s.capillaryRefillSeconds > 3)
@@ -21,7 +21,8 @@ export function selectKrtModality(s: ClinicalSnapshot): DecisionResult[] {
   if (s.rapidSoluteClearanceNeeded === undefined) missingData.push('是否需快速溶質清除');
   if (s.preciseFluidElectrolyteControlNeeded === undefined) missingData.push('是否需精密液體／電解質控制');
   const precision = s.preciseFluidElectrolyteControlNeeded === true || s.requiresControlledSodiumCorrection === true;
-  const option = unstable || s.intracranialPressureRisk === true || precision ? 'CRRT review'
+  const option = conflict ? '資料不足或衝突，暫不偏好單一模式'
+    : unstable || s.intracranialPressureRisk === true || precision ? 'CRRT review'
     : stable && s.intracranialPressureRisk === false && s.preciseFluidElectrolyteControlNeeded === false ? 'IHD review'
       : s.hemodynamicTolerance === 'intermediate' && knownPerfusion && !perfusionConcern && s.intracranialPressureRisk === false && s.preciseFluidElectrolyteControlNeeded === false ? 'PIRRT review'
         : '資料不足或衝突，暫不偏好單一模式';

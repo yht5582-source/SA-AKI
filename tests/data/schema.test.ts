@@ -83,6 +83,13 @@ describe('clinical persistence schemas', () => {
     expect(() => clinicalSnapshotSchema.parse(validSnapshot({ timestamp: 'not-a-date' }))).toThrow();
   });
 
+  it('records an actual CRRT stop only after it occurred and allows an ongoing treatment without a stop time', () => {
+    const running = validSnapshot({ crrtStartedTimestamp: '2026-09-21T04:00:00Z' });
+    expect(clinicalSnapshotSchema.safeParse(running).success).toBe(true);
+    expect(clinicalSnapshotSchema.safeParse({ ...running, crrtStoppedTimestamp: '2026-09-21T05:00:00Z' }).success).toBe(true);
+    expect(clinicalSnapshotSchema.safeParse({ ...running, crrtStoppedTimestamp: '2026-09-21T08:00:00Z' }).success).toBe(false);
+  });
+
   it('accepts schema version 1 and rejects unsupported versions', () => {
     const valid = { schemaVersion: 1, case: validCase(), snapshots: [validSnapshot()] };
 

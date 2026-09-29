@@ -241,7 +241,7 @@ describe('longitudinal CRRT treatment-state reconciliation', () => {
     const history = [snapshot(6, { crrtStoppedTimestamp: '2026-09-21T07:00:00Z' })];
     const result = evaluate(snapshot(12, { crrtStartedTimestamp: '2026-09-21T08:00:00Z' }), history);
     expect(result.conclusion).toContain('continue and reassess');
-    expect(result.missingData.join(' ')).toMatch(/treatment-state uncertainty/i);
+    expect(result.missingData.join(' ')).toMatch(/invalid history\[0\]\.crrtStoppedTimestamp.*later than assessment time/i);
   });
   it('does not discard conflicting stops for one episode when a later start is recorded, in either order', () => {
     const early = snapshot(0, { crrtStoppedTimestamp: '2026-09-20T23:00:00Z' });
