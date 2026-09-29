@@ -111,7 +111,7 @@ it('validates anonymous baseline/provenance fields during case creation', async 
   await user.clear(screen.getByLabelText('基準 SCr')); await user.type(screen.getByLabelText('基準 SCr'), '0.8');
   await user.selectOptions(screen.getByLabelText('基準 SCr 來源'), 'measured-outpatient');
   await user.selectOptions(screen.getByLabelText('基準 SCr 可信度'), 'high');
-  await user.type(screen.getByLabelText('Sepsis 起始時間（UTC）'), '2026-09-21T00:00');
+  await user.type(screen.getByLabelText('Sepsis 起始時間（台灣）'), '2026-09-21T08:00');
   await user.click(screen.getByRole('button', { name: '建立病例' }));
   await screen.findByRole('heading', { name: '感染／休克' });
   expect((await caseRepository.listCases())[0]).toMatchObject({ baselineCreatinineMgDl: 0.8, baselineCreatinineSource: 'measured-outpatient', baselineCreatinineConfidence: 'high', sepsisOnsetTimestamp: '2026-09-21T00:00:00.000Z' });
@@ -137,7 +137,7 @@ it('corrects anonymous metadata, cancels without mutation, and reopens with snap
   view.unmount(); mount();
   await user.click(await screen.findByRole('button', { name: '編輯 A-edit' }));
   expect(screen.getByLabelText('基準 SCr')).toHaveValue(0.8);
-  expect(screen.getByLabelText('Sepsis 起始時間（UTC）')).toHaveValue('2026-09-21T00:00:00.125');
+  expect(screen.getByLabelText('Sepsis 起始時間（台灣）')).toHaveValue('2026-09-21T08:00');
 });
 
 it('rejects conflicting case metadata updates atomically and retains the prior case and snapshots', async () => {
@@ -147,12 +147,12 @@ it('rejects conflicting case metadata updates atomically and retains the prior c
   const user = userEvent.setup(); mount();
   await user.click(await screen.findByRole('button', { name: '編輯 A-edit' }));
   await user.clear(screen.getByLabelText('基準 SCr')); await user.type(screen.getByLabelText('基準 SCr'), '0.7');
-  await user.clear(screen.getByLabelText('Sepsis 起始時間（UTC）')); await user.type(screen.getByLabelText('Sepsis 起始時間（UTC）'), '2026-09-21T01:00');
+  await user.clear(screen.getByLabelText('Sepsis 起始時間（台灣）')); await user.type(screen.getByLabelText('Sepsis 起始時間（台灣）'), '2026-09-21T09:00');
   await user.click(screen.getByRole('button', { name: '確認更新病例' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('更新失敗');
   expect(await caseRepository.getCase('editable')).toEqual({ case: patient, snapshots: [snapshot] });
-  await user.clear(screen.getByLabelText('休克起始時間（UTC）')); await user.type(screen.getByLabelText('休克起始時間（UTC）'), '2026-09-20T23:00');
-  expect(screen.getByLabelText('休克起始時間（UTC）')).toHaveAttribute('aria-invalid', 'true');
+  await user.clear(screen.getByLabelText('休克起始時間（台灣）')); await user.type(screen.getByLabelText('休克起始時間（台灣）'), '2026-09-21T07:00');
+  expect(screen.getByLabelText('休克起始時間（台灣）')).toHaveAttribute('aria-invalid', 'true');
   await user.click(screen.getByRole('button', { name: '確認更新病例' }));
   expect(await caseRepository.getCase('editable')).toEqual({ case: patient, snapshots: [snapshot] });
 });
@@ -163,13 +163,13 @@ it('builds an HA baseline and a serial multidisciplinary review using only case 
   await user.click(screen.getByRole('button', { name: '建立病例' }));
   async function enterObservation(hour: number, ne: string, lactate: string, sofa: string, il6: string) {
     await screen.findByRole('heading', { name: '感染／休克' });
-    await user.type(screen.getByLabelText('評估時間（UTC）'), `2026-09-21T0${hour}:00`);
+    await user.type(screen.getByLabelText('評估時間（台灣）'), `2026-09-21T${hour + 8}:00`);
     await user.type(screen.getByLabelText('距 Sepsis 起始時數'), String(hour));
     await user.type(screen.getByLabelText('NE 等效劑量'), ne);
     await user.type(screen.getByLabelText('乳酸'), lactate);
     await user.type(screen.getByLabelText('SOFA'), sofa);
     await user.selectOptions(screen.getByLabelText('感染源控制'), 'achieved');
-    await user.type(screen.getByLabelText('首次抗菌藥時間（UTC）'), '2026-09-21T01:00');
+    await user.type(screen.getByLabelText('首次抗菌藥時間（台灣）'), '2026-09-21T09:00');
     await user.click(screen.getByRole('button', { name: 'AKI 評估' }));
     await user.type(screen.getByLabelText('目前實際體重'), '70');
     await user.type(screen.getByLabelText('尿量'), '60');
@@ -205,6 +205,6 @@ it('builds an HA baseline and a serial multidisciplinary review using only case 
   await screen.findByText('已儲存時間點（唯讀）');
   expect(await screen.findByText('IL-6：1800 pg/mL')).toBeVisible();
   expect(screen.getByText('HA 多專科審查已記錄；非治療資格或自動醫囑。')).toBeVisible();
-  expect(screen.getByRole('link', { name: '4 h · 2026-09-21T04:00:00.000Z' })).toBeVisible();
-  expect(screen.getByRole('link', { name: '6 h · 2026-09-21T06:00:00.000Z' })).toBeVisible();
+  expect(screen.getByRole('link', { name: '4 h · 2026-09-21 12:00:00（台灣時間）' })).toBeVisible();
+  expect(screen.getByRole('link', { name: '6 h · 2026-09-21 14:00:00（台灣時間）' })).toBeVisible();
 }, 20000);

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ClinicalSnapshot, DecisionResult } from '../../clinical/types';
 import { evidenceSources } from '../../clinical/sources';
+import { formatTaipeiDateTime, formatTaipeiTimestamps } from '../../clinical/taipeiTime';
 
 /** Allowlisted generated conclusions only. Never serialize patient data, free text, actions or medication evidence. */
 function buildHandoff(snapshot: ClinicalSnapshot, decisions: DecisionResult[], haStatus?: string): string {
@@ -10,7 +11,7 @@ function buildHandoff(snapshot: ClinicalSnapshot, decisions: DecisionResult[], h
   const sources = [...new Set(decisions.flatMap(result => result.sourceIds))];
   return [
     '臨床交班摘要｜臨床決策支援，非自動醫囑；不可取代臨床判斷。',
-    `評估時間：${snapshot.timestamp}（距 Sepsis ${snapshot.hoursFromSepsisOnset} h）`,
+    `評估時間：${formatTaipeiDateTime(snapshot.timestamp)}（距 Sepsis ${snapshot.hoursFromSepsisOnset} h）`,
     `KDIGO / SA-AKI：${conclusion('aki-staging')}；${conclusion('sa-aki-timing')}`,
     `液體階段：${conclusion('fluid-rose')}`,
     `KRT 狀態：${conclusion('krt-emergency-indications')}；${conclusion('crrt-liberation-review')}`,
@@ -19,7 +20,7 @@ function buildHandoff(snapshot: ClinicalSnapshot, decisions: DecisionResult[], h
     ...(haStatus ? [`HA 狀態：${haStatus}；非常規路徑，非治療資格。`] : []),
     `下次重評：${next === undefined ? '待臨床確認' : next === 0 ? '立即' : `至遲 ${next} 小時內（自上述評估時間起算）`}；惡化時立即重評，不等待排程。`,
     `證據不確定性：臨床內容尚待專業審查；缺失資料共 ${new Set(decisions.flatMap(result => result.missingData)).size} 項，未知不代表正常；本機操作性規則非經驗證治療閾值。來源：${sources.map(id => `${id} (${evidenceSources[id]?.status ?? 'unverified'})`).join(', ')}。來源核實不等同病人適用性或治療授權。`,
-  ].join('\n\n');
+  ].map(formatTaipeiTimestamps).join('\n\n');
 }
 export function HandoffSummary({ snapshot, decisions, haStatus }: { snapshot: ClinicalSnapshot; decisions: DecisionResult[]; haStatus?: string }) {
   const [message, setMessage] = useState(''); const textarea = useRef<HTMLTextAreaElement>(null);

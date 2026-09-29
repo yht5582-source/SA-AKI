@@ -33,9 +33,9 @@ export async function createAnonymousCase(page: Page) {
   await page.getByLabel('基準 SCr', { exact: true }).fill('1');
   await page.getByLabel('基準 SCr 來源', { exact: true }).selectOption('measured-outpatient');
   await page.getByLabel('基準 SCr 可信度', { exact: true }).selectOption('high');
-  await page.getByLabel('基準 SCr 時間（UTC）', { exact: true }).fill('2026-09-21T00:00');
-  await page.getByLabel('Sepsis 起始時間（UTC）', { exact: true }).fill('2026-09-21T00:00');
-  await page.getByLabel('休克起始時間（UTC）', { exact: true }).fill('2026-09-21T00:00');
+  await page.getByLabel('基準 SCr 時間（台灣）', { exact: true }).fill('2026-09-21T08:00');
+  await page.getByLabel('Sepsis 起始時間（台灣）', { exact: true }).fill('2026-09-21T08:00');
+  await page.getByLabel('休克起始時間（台灣）', { exact: true }).fill('2026-09-21T08:00');
   await page.getByRole('button', { name: '建立病例', exact: true }).click();
   await expect(page.getByRole('heading', { name: '感染／休克', exact: true })).toBeVisible();
   const title = await page.getByRole('heading', { name: /^匿名病例 A-/ }).innerText();
@@ -49,10 +49,10 @@ export async function step(page: Page, name: string) {
 
 export async function fillObservation(page: Page, hour: 6 | 12 = 6) {
   await step(page, '感染／休克');
-  await page.getByLabel('評估時間（UTC）', { exact: true }).fill(`2026-09-21T${String(hour).padStart(2, '0')}:00`);
+  await page.getByLabel('評估時間（台灣）', { exact: true }).fill(`2026-09-21T${String(hour + 8).padStart(2, '0')}:00`);
   await page.getByLabel('距 Sepsis 起始時數', { exact: true }).fill(String(hour));
   await page.getByLabel('感染源控制', { exact: true }).selectOption('achieved');
-  await page.getByLabel('首次抗菌藥時間（UTC）', { exact: true }).fill('2026-09-21T00:00');
+  await page.getByLabel('首次抗菌藥時間（台灣）', { exact: true }).fill('2026-09-21T08:00');
   await page.getByLabel('SOFA', { exact: true }).fill('10');
   await page.getByLabel('NE 等效劑量', { exact: true }).fill(hour === 6 ? '0.3' : '0.4');
   await page.getByLabel('升壓劑趨勢', { exact: true }).selectOption('worsening');

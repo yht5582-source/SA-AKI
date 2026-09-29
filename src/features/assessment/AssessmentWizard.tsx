@@ -6,6 +6,7 @@ import { evaluateKrtInitiation } from '../../clinical/krt';
 import { dialysisAdvice } from '../../clinical/dialysisAdvice';
 import { selectKrtModality } from '../../clinical/modality';
 import { modalityAdvice } from '../../clinical/modalityAdvice';
+import { formatTaipeiDateTime, formatTaipeiTimestamps, fromTaipeiInput, toTaipeiInput } from '../../clinical/taipeiTime';
 import { z } from 'zod';
 import { caseExportSchema, clinicalSnapshotSchema } from '../../data/schema';
 import { caseRepository, type StoredCase } from '../../data/caseRepository';
@@ -13,7 +14,7 @@ import { Stepper } from '../../components/Stepper';
 import { AssessmentStep } from './steps/AssessmentStep';
 import { allFields, haFields, haExposureFields, stepFields, stepLabels } from './steps/fields';
 import { fieldsForMissingItem } from './modalityFields';
-import { clearAssessmentDrafts, readDraft, writeDraft } from './draft';
+import { clearAssessmentDrafts, readDraft, writeDraft, type AssessmentDraft } from './draft';
 import { HaWarning } from '../ha/HaWarning';
 import { haStatusLabel } from '../ha/haPresentation';
 import { strictlyEarlierSnapshot } from '../dashboard/snapshotContext';
@@ -42,7 +43,7 @@ const modalityPreviewSchema = z.object({
   mentalStatus: z.enum(['alert', 'altered', 'unresponsive', 'sedated']).optional(),
 });
 
-function candidateFrom(values: Record<string, string>, caseId: string, snapshotId: string, haEnabled: boolean): Record<string, unknown> {
+function candidateFrom(values: Record<string, string>, caseId: string, snapshotId: string, haEnabled: boolean, legacyTimeInstants?: Record<string, string>): Record<string, unknown> {
   const candidate: Record<string, unknown> = { id: snapshotId, caseId };
   for (const field of allFields) {
     const raw = values[field.key]; if (!raw || (!haEnabled && field.key.startsWith('hemoadsorptionAssessment.'))) continue;
@@ -52,7 +53,8 @@ function candidateFrom(values: Record<string, string>, caseId: string, snapshotI
       try { value = JSON.parse(raw); } catch { value = raw; /* Invalid syntax remains invalid for strict persistence validation. */ }
     }
     if (field.type === 'boolean') value = raw === 'true' ? true : raw === 'false' ? false : raw;
-    if (field.type === 'datetime-local') value = Number.isFinite(Date.parse(raw + 'Z')) ? new Date(raw + 'Z').toISOString() : raw;
+    if (field.type === 'datetime-local') value = legacyTimeInstants?.[field.key] && toTaipeiInput(legacyTimeInstants[field.key]) === raw
+      ? legacyTimeInstants[field.key] : fromTaipeiInput(raw);
     const path = field.key.split('.'); let object = candidate;
     path.slice(0, -1).forEach((key, index) => { object[key] ??= /^\d+$/.test(path[index + 1]) ? [] : {}; object = object[key] as Record<string, unknown>; });
     object[path[path.length - 1]] = value;
@@ -67,9 +69,18 @@ function valuesFrom(snapshot: ClinicalSnapshot): Record<string, string> {
   const values: Record<string, string> = {};
   for (const field of allFields) {
     const value = valueAtPath(snapshot, field.key);
-    if (value !== undefined) values[field.key] = field.type === 'datetime-local' ? new Date(String(value)).toISOString().slice(0, -1) : field.type === 'json' || field.type === 'multi-select' ? JSON.stringify(value) : String(value);
+    if (value !== undefined) values[field.key] = field.type === 'datetime-local' ? toTaipeiInput(String(value)) : field.type === 'json' || field.type === 'multi-select' ? JSON.stringify(value) : String(value);
   }
   return values;
+}
+
+function reviewValue(field: (typeof allFields)[number], draft: AssessmentDraft, existing?: ClinicalSnapshot): string {
+  const raw = draft.values[field.key];
+  if (!raw) return '未知';
+  if (field.type !== 'datetime-local') return `${field.type === 'json' ? formatTaipeiTimestamps(raw) : raw} ${field.unit ?? ''}`;
+  const preserved = draft.legacyTimeInstants?.[field.key];
+  const instant = existing ? String(valueAtPath(existing, field.key)) : preserved && toTaipeiInput(preserved) === raw ? preserved : fromTaipeiInput(raw);
+  return formatTaipeiDateTime(instant);
 }
 
 export function AssessmentWizard() {
@@ -102,7 +113,7 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   const fieldFocusRequest = useRef<string | undefined>(!existing ? new URLSearchParams(location.search).get('field') ?? undefined : undefined);
   const heading = useRef<HTMLHeadingElement>(null); const readonly = !!existing;
   // Saved observations are immutable inputs to validation/rules, never round-tripped through form strings.
-  const candidate = existing ?? candidateFrom(draft.values, stored.case.id, id, draft.haEnabled);
+  const candidate = existing ?? candidateFrom(draft.values, stored.case.id, id, draft.haEnabled, draft.legacyTimeInstants);
   const validation = clinicalSnapshotSchema.safeParse(candidate);
   const krtPreview = krtPreviewSchema.safeParse(candidate);
   const krtIndication = krtPreview.success ? evaluateKrtInitiation(krtPreview.data)[0] : undefined;
@@ -178,7 +189,7 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
       {(draft.step === 6 || draft.haEnabled) && <HaWarning/>}
       {draft.step === 5 && <p>處方算式與 RCA 僅供臨床團隊審查，非機器醫囑；所有確認均須明確輸入，未知不代表同意或無禁忌。不得據此自動設定機器或 citrate／calcium 輸注。</p>}
       {draft.haEnabled && <p role="status">{haReviewRecorded ? 'HA 多專科審查已記錄；非治療資格或自動醫囑。' : haStatusLabel(ha, validation.success ? validation.data.hemoadsorptionAssessment : { optedIn: true })}</p>}
-      {review ? <><p>請確認資料與缺失項目。未知值會保留為未知；儲存不表示完成診斷或治療建議。</p><dl className="review-values">{allFields.filter(field => draft.haEnabled || ![...haFields, ...haExposureFields].includes(field) || (!field.key.startsWith('hemoadsorptionAssessment.') && draft.values[field.key])).map(field => <div key={field.key}><dt>{field.label}：{draft.values[field.key] ? `${existing && field.type === 'datetime-local' ? valueAtPath(existing, field.key) : draft.values[field.key]} ${field.unit ?? ''}` : '未知'}</dt>{errors[field.key] && <dd className="field-error">{errors[field.key]}</dd>}</div>)}</dl>{existing?.hemoadsorptionExposures && <details><summary>全部 HA 暴露紀錄（{existing.hemoadsorptionExposures.length} 筆，唯讀）</summary><pre>{JSON.stringify(existing.hemoadsorptionExposures, null, 2)}</pre></details>}{!readonly && draft.haEnabled && !haReviewRecorded && <label className="ha-optin"><input type="checkbox" checked={saveIncompleteHa} onChange={event => setSaveIncompleteHa(event.target.checked)}/>僅儲存未完成 HA 觀察（不代表符合資格）</label>}</>
+      {review ? <><p>請確認資料與缺失項目。未知值會保留為未知；儲存不表示完成診斷或治療建議。</p><dl className="review-values">{allFields.filter(field => draft.haEnabled || ![...haFields, ...haExposureFields].includes(field) || (!field.key.startsWith('hemoadsorptionAssessment.') && draft.values[field.key])).map(field => <div key={field.key}><dt>{field.label}：{reviewValue(field, draft, existing)}</dt>{errors[field.key] && <dd className="field-error">{errors[field.key]}</dd>}</div>)}</dl>{existing?.hemoadsorptionExposures && <details><summary>全部 HA 暴露紀錄（{existing.hemoadsorptionExposures.length} 筆，唯讀）</summary><pre>{formatTaipeiTimestamps(JSON.stringify(existing.hemoadsorptionExposures, null, 2))}</pre></details>}{!readonly && draft.haEnabled && !haReviewRecorded && <label className="ha-optin"><input type="checkbox" checked={saveIncompleteHa} onChange={event => setSaveIncompleteHa(event.target.checked)}/>僅儲存未完成 HA 觀察（不代表符合資格）</label>}</>
         : draft.step === 6 ? <>
           <p className="ha-note">HA 非常規治療路徑；最高狀態僅為多專科審查，不是治療醫囑。</p>
           <label className="ha-optin"><input type="checkbox" checked={draft.haEnabled} disabled={readonly} onChange={event => { setDraft(current => ({ ...current, haEnabled: event.target.checked })); setHaReviewed(false); setSaveIncompleteHa(false); }}/>主動啟用 HA 救援評估</label>
@@ -193,8 +204,8 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
             {haReviewed && <p>多專科審查已確認；非自動醫囑。</p>}
           </>}
         </>
-          : <><AssessmentStep fields={stepFields[draft.step]} values={draft.values} errors={errors} onChange={(key, value) => update({ ...draft.values, [key]: value })} disabled={readonly}/>{draft.step === 1 && <p>基準 SCr：{stored.case.baselineCreatinineMgDl ?? '未知'} mg/dL；來源：{stored.case.baselineCreatinineSource ?? '尚未記錄'}。Sepsis 起始時間：{stored.case.sepsisOnsetTimestamp ?? '尚未記錄'}。</p>}</>}
-    </section><aside className="assessment-judgment" aria-label="目前判斷"><h2>目前判斷</h2><div className="judgment"><div><strong>{krtAdvice?.tone === 'urgent' ? '立即評估透析' : krtAdvice?.tone === 'defer' ? '持續監測' : '需重評透析指徵'}</strong><p>{krtAdvice?.text ?? '透析評估輸入值無效，無法判定；請修正資料並立即處理臨床危險。'}</p></div></div><section className="missing-data"><h3>缺失資料</h3><ul>{missing.map(field => <li key={field.key}><span>{field.label}{['timestamp', 'hoursFromSepsisOnset', 'actualWeightKg', 'onEcmo'].includes(field.key) ? '（儲存必填）' : '（臨床評估未完成）'}</span><button type="button" className="button" disabled={readonly} aria-label={`前往填寫${field.label}`} onClick={() => completeMissingField(field.key)}>前往填寫</button></li>)}</ul>{!stored.case.baselineCreatinineSource && <div className="missing-case-data"><p>基準 SCr 與資料來源尚未記錄</p><button type="button" className="button" onClick={goToCaseData}>前往填寫病例資料</button></div>}{draft.haEnabled && !haEligible && <p>HA 四項門檻尚未通過；可明確確認僅儲存未完成觀察，再於後續時間點重評。</p>}</section><section className="next-action"><h3>下一步</h3><p>{krtIndication?.actions[0] ?? '修正無效欄位並確認透析危險指徵'}</p><small>重評時間：{krtIndication?.reassessWithinHours === 0 ? '立即' : krtIndication?.reassessWithinHours !== undefined ? `${krtIndication.reassessWithinHours} 小時內（本機建議，需臨床確認）` : '立即確認'}</small></section></aside><aside className="assessment-timeline"><h2>既有時間點</h2><ul>{stored.snapshots.map(snapshot => <li key={snapshot.id}><Link to={`/case/${encodeURIComponent(stored.case.id)}/assessment/${encodeURIComponent(snapshot.id)}`}>{snapshot.hoursFromSepsisOnset} h · {snapshot.timestamp}</Link></li>)}</ul>{stored.snapshots.length === 0 && <p>尚無資料</p>}<Link className="button" to={`/case/${encodeURIComponent(stored.case.id)}/assessment`}>新增時間點</Link></aside></div>
+          : <><AssessmentStep fields={stepFields[draft.step]} values={draft.values} errors={errors} onChange={(key, value) => update({ ...draft.values, [key]: value })} disabled={readonly}/>{draft.step === 1 && <p>基準 SCr：{stored.case.baselineCreatinineMgDl ?? '未知'} mg/dL；來源：{stored.case.baselineCreatinineSource ?? '尚未記錄'}。Sepsis 起始時間：{stored.case.sepsisOnsetTimestamp ? formatTaipeiDateTime(stored.case.sepsisOnsetTimestamp) : '尚未記錄'}。</p>}</>}
+    </section><aside className="assessment-judgment" aria-label="目前判斷"><h2>目前判斷</h2><div className="judgment"><div><strong>{krtAdvice?.tone === 'urgent' ? '立即評估透析' : krtAdvice?.tone === 'defer' ? '持續監測' : '需重評透析指徵'}</strong><p>{krtAdvice?.text ?? '透析評估輸入值無效，無法判定；請修正資料並立即處理臨床危險。'}</p></div></div><section className="missing-data"><h3>缺失資料</h3><ul>{missing.map(field => <li key={field.key}><span>{field.label}{['timestamp', 'hoursFromSepsisOnset', 'actualWeightKg', 'onEcmo'].includes(field.key) ? '（儲存必填）' : '（臨床評估未完成）'}</span><button type="button" className="button" disabled={readonly} aria-label={`前往填寫${field.label}`} onClick={() => completeMissingField(field.key)}>前往填寫</button></li>)}</ul>{!stored.case.baselineCreatinineSource && <div className="missing-case-data"><p>基準 SCr 與資料來源尚未記錄</p><button type="button" className="button" onClick={goToCaseData}>前往填寫病例資料</button></div>}{draft.haEnabled && !haEligible && <p>HA 四項門檻尚未通過；可明確確認僅儲存未完成觀察，再於後續時間點重評。</p>}</section><section className="next-action"><h3>下一步</h3><p>{krtIndication?.actions[0] ?? '修正無效欄位並確認透析危險指徵'}</p><small>重評時間：{krtIndication?.reassessWithinHours === 0 ? '立即' : krtIndication?.reassessWithinHours !== undefined ? `${krtIndication.reassessWithinHours} 小時內（本機建議，需臨床確認）` : '立即確認'}</small></section></aside><aside className="assessment-timeline"><h2>既有時間點</h2><ul>{stored.snapshots.map(snapshot => <li key={snapshot.id}><Link to={`/case/${encodeURIComponent(stored.case.id)}/assessment/${encodeURIComponent(snapshot.id)}`}>{snapshot.hoursFromSepsisOnset} h · {formatTaipeiDateTime(snapshot.timestamp)}</Link></li>)}</ul>{stored.snapshots.length === 0 && <p>尚無資料</p>}<Link className="button" to={`/case/${encodeURIComponent(stored.case.id)}/assessment`}>新增時間點</Link></aside></div>
     {error && <p role="alert">{error}</p>}{review && exportValidation && !exportValidation.success && <p role="alert">時間點與病例時間關係不一致，請修正後儲存。</p>}
     <div className="assessment-actions">{review ? <><button className="button" onClick={() => setReview(false)}>返回編輯</button>{!readonly && <button className="button primary" disabled={!canSave || busy} onClick={async () => {
       if (!canSave || !validation.success || busy) return; setBusy(true); setError('');

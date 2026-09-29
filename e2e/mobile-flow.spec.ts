@@ -28,8 +28,8 @@ test('390×844 eight-step wizard saves a real timepoint without document overflo
   for (const [index, label] of ['感染／休克', 'AKI 評估', '灌流／液體', 'KRT', '模式／ECMO', '處方', '選配 HA', '監測／脫離'].entries()) {
     await step(page, label);
     await expect(page.getByRole('progressbar', { name: '評估進度' })).toHaveAttribute('aria-valuenow', String(index + 1));
-    if (label === '處方') await expect(page.getByLabel('實際 CRRT 停止（UTC）')).toHaveCount(0);
-    if (label === '監測／脫離') await expect(page.getByLabel('實際 CRRT 停止（UTC）')).toHaveValue('');
+    if (label === '處方') await expect(page.getByLabel('實際 CRRT 停止（台灣）')).toHaveCount(0);
+    if (label === '監測／脫離') await expect(page.getByLabel('實際 CRRT 停止（台灣）')).toHaveValue('');
     await expectNoHorizontalOverflow(page);
   }
   await step(page, 'AKI 評估');

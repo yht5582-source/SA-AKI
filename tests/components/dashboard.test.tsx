@@ -137,7 +137,7 @@ it('opens the dashboard from case overview and never uses later observations in 
   await user.selectOptions(screen.getByLabelText('評估時間點'), 's0');
   expect(screen.queryByRole('heading', { name: /urgent KRT evaluation/ })).not.toBeInTheDocument();
   expect(within(screen.getByRole('table', { name: 'SCr 數據' })).getByRole('row', { name: /6 h.*缺值/ })).toBeVisible();
-  expect((screen.getByLabelText('交班摘要') as HTMLTextAreaElement).value).toContain('2026-09-21T00:00:00.000Z');
+  expect((screen.getByLabelText('交班摘要') as HTMLTextAreaElement).value).toContain('2026-09-21 08:00:00（台灣時間）');
 });
 
 it('keeps a selected same-time observation aligned across dashboard input, diagnosis, and SOFA cards', async () => {

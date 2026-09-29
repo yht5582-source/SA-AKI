@@ -3,15 +3,16 @@ import { caseRepository } from '../../data/caseRepository';
 import { FormField, type FieldDefinition } from '../../components/FormField';
 import { patientCaseSchema } from '../../data/schema';
 import type { PatientCase } from '../../clinical/types';
+import { fromTaipeiInput, toTaipeiInput } from '../../clinical/taipeiTime';
 
 const fields: FieldDefinition[] = [
   { key: 'ageRange', label: '成人年齡區間', type: 'select', options: [['18-39', '18–39'], ['40-64', '40–64'], ['65-79', '65–79'], ['80-plus', '80 以上']] },
   { key: 'baselineCreatinineMgDl', label: '基準 SCr', type: 'number', unit: 'mg/dL', help: '可接受範圍：≥ 0；未知請留空。' },
   { key: 'baselineCreatinineSource', label: '基準 SCr 來源', type: 'select', options: [['measured-outpatient', '門診實測'], ['measured-inpatient', '住院實測'], ['estimated', '估計'], ['back-calculated', '回推']] },
   { key: 'baselineCreatinineConfidence', label: '基準 SCr 可信度', type: 'select', options: [['high', '高'], ['moderate', '中'], ['low', '低']] },
-  { key: 'baselineCreatinineTimestamp', label: '基準 SCr 時間（UTC）', type: 'datetime-local', help: 'UTC 時間；未知請留空。' },
-  { key: 'sepsisOnsetTimestamp', label: 'Sepsis 起始時間（UTC）', type: 'datetime-local', help: 'UTC 時間；未知請留空。' },
-  { key: 'shockOnsetTimestamp', label: '休克起始時間（UTC）', type: 'datetime-local', help: 'UTC 時間；不得早於 Sepsis 起始時間。' },
+  { key: 'baselineCreatinineTimestamp', label: '基準 SCr 時間（台灣）', type: 'datetime-local', help: '台灣時間（UTC+8），顯示至秒；未知請留空。' },
+  { key: 'sepsisOnsetTimestamp', label: 'Sepsis 起始時間（台灣）', type: 'datetime-local', help: '台灣時間（UTC+8），顯示至秒；未知請留空。' },
+  { key: 'shockOnsetTimestamp', label: '休克起始時間（台灣）', type: 'datetime-local', help: '台灣時間（UTC+8），顯示至秒；不得早於 Sepsis 起始時間。' },
 ];
 
 export function CaseForm({ onCreated, onCancel, initial }: { onCreated: (id: string) => void; onCancel: () => void; initial?: PatientCase }) {
@@ -20,11 +21,12 @@ export function CaseForm({ onCreated, onCancel, initial }: { onCreated: (id: str
   const display: Record<string, string> = {};
   for (const field of fields) {
     const original = initial?.[field.key as keyof PatientCase];
-    display[field.key] = original === undefined ? '' : field.type === 'datetime-local' ? new Date(String(original)).toISOString().slice(0, -1) : String(original);
+    display[field.key] = original === undefined ? '' : field.type === 'datetime-local' ? toTaipeiInput(String(original)) : String(original);
     if (Object.hasOwn(values, field.key)) {
       const raw = values[field.key]; display[field.key] = raw;
       if (!raw) delete candidate[field.key];
-      else candidate[field.key] = field.type === 'number' ? Number(raw) : field.type === 'datetime-local' && Number.isFinite(Date.parse(raw + 'Z')) ? new Date(raw + 'Z').toISOString() : raw;
+      else candidate[field.key] = field.type === 'number' ? Number(raw)
+        : field.type === 'datetime-local' ? original !== undefined && toTaipeiInput(String(original)) === raw ? original : fromTaipeiInput(raw) : raw;
     }
   }
   const validation = patientCaseSchema.safeParse(candidate);

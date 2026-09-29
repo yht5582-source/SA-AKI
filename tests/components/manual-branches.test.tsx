@@ -12,7 +12,7 @@ beforeEach(async () => { await caseRepository.clearAll(); sessionStorage.clear()
 async function base() {
   const user = userEvent.setup();
   await screen.findByRole('heading', { name: '感染／休克' });
-  fill('評估時間（UTC）', '2026-09-21T12:00'); fill('距 Sepsis 起始時數', '12');
+  fill('評估時間（台灣）', '2026-09-21T20:00'); fill('距 Sepsis 起始時數', '12');
   await user.click(screen.getByRole('button', { name: 'AKI 評估' })); fill('目前實際體重', '70');
   await user.click(screen.getByRole('button', { name: '模式／ECMO' })); fill('目前使用 ECMO', 'false');
   return user;
@@ -79,7 +79,7 @@ it('records an ongoing HA exposure with typed repeatable drug/TDM/events and kee
   const view = mount(); const user = await base();
   await user.click(screen.getByRole('button', { name: '感染／休克' })); fill('NE 等效劑量', '0.6');
   await user.click(screen.getByRole('button', { name: '選配 HA' })); await user.click(screen.getByRole('checkbox', { name: '主動啟用 HA 救援評估' }));
-  for (const [label, value] of Object.entries({ 'HA 暴露裝置': 'CytoSorb', 'HA 暴露目標': 'cytokines', 'HA 暴露開始（UTC）': '2026-09-21T06:00', 'HA 血流量': '150', 'HA 累積處理血量': '20', 'HA 記錄反應': 'worsening', 'HA 反應審查時間（UTC）': '2026-09-21T12:00' })) fill(label, value);
+  for (const [label, value] of Object.entries({ 'HA 暴露裝置': 'CytoSorb', 'HA 暴露目標': 'cytokines', 'HA 暴露開始（台灣）': '2026-09-21T14:00', 'HA 血流量': '150', 'HA 累積處理血量': '20', 'HA 記錄反應': 'worsening', 'HA 反應審查時間（台灣）': '2026-09-21T20:00' })) fill(label, value);
   const drugs = [{ drugName: 'vancomycin', administeredTimestamp: '2026-09-21T07:00:00Z', doseMg: 1500 }, { drugName: 'meropenem', administeredTimestamp: '2026-09-21T09:00:00Z', doseMg: 1000 }];
   const tdm = [{ drugName: 'vancomycin', sampledTimestamp: '2026-09-21T11:00:00Z', concentrationMgL: 12 }];
   const events = [{ timestamp: '2026-09-21T11:00:00Z', kind: 'hypotension', severity: 'severe' }];
@@ -93,7 +93,7 @@ it('records an ongoing HA exposure with typed repeatable drug/TDM/events and kee
   expect(response?.severity).toBe('critical'); expect(response?.evidence.join(' ')).toContain('Rising NE-equivalent');
   view.unmount(); mount('/' + stored.snapshots.at(-1)!.id); await screen.findByText('已儲存時間點（唯讀）');
   expect(screen.queryByText(/\[object Object\]/)).not.toBeInTheDocument();
-  expect(screen.getByText(/HA 反應審查時間（UTC）：2026-09-21T12:00/)).toBeVisible();
+  expect(screen.getByText(/HA 反應審查時間（台灣）：2026-09-21 20:00:00（台灣時間）/)).toBeVisible();
   await user.click(screen.getByRole('button', { name: '返回編輯' })); await user.click(screen.getByRole('button', { name: '選配 HA' }));
   expect(JSON.parse((screen.getByLabelText('HA 給藥紀錄（JSON 陣列）') as HTMLTextAreaElement).value)).toEqual(drugs);
   expect(screen.getByLabelText('HA 給藥紀錄（JSON 陣列）')).toBeDisabled();
@@ -103,7 +103,7 @@ it('records an ongoing HA exposure with typed repeatable drug/TDM/events and kee
 it.each(['not-json', '[{"drugName":"vancomycin","administeredTimestamp":"2026-09-21T07:00:00Z","doseMg":"1500"}]', '[{"drugName":"vancomycin","administeredTimestamp":"2026-09-21T07:00:00Z","patientName":"forbidden"}]'])('blocks malformed/coerced/identifying HA subrecords: %s', async raw => {
   mount(); const user = await base(); await user.click(screen.getByRole('button', { name: '選配 HA' }));
   await user.click(screen.getByRole('checkbox', { name: '主動啟用 HA 救援評估' }));
-  fill('HA 暴露裝置', 'CytoSorb'); fill('HA 暴露開始（UTC）', '2026-09-21T06:00'); fill('HA 給藥紀錄（JSON 陣列）', raw);
+  fill('HA 暴露裝置', 'CytoSorb'); fill('HA 暴露開始（台灣）', '2026-09-21T06:00'); fill('HA 給藥紀錄（JSON 陣列）', raw);
   expect(screen.getByLabelText('HA 給藥紀錄（JSON 陣列）')).toHaveAttribute('aria-invalid', 'true');
   await user.click(screen.getByRole('button', { name: '檢視並確認' }));
   await user.click(screen.getByRole('checkbox', { name: '僅儲存未完成 HA 觀察（不代表符合資格）' }));

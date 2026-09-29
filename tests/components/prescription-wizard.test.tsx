@@ -13,7 +13,7 @@ it('creates a complete non-order CRRT/RCA review through accessible controls and
   render(<MemoryRouter initialEntries={['/case/c1/assessment']}><ApplicationRoutes/></MemoryRouter>);
   await screen.findByRole('heading', { name: '感染／休克' });
   const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
-  fill('評估時間（UTC）', '2026-09-21T12:00'); fill('距 Sepsis 起始時數', '12'); fill('升壓劑趨勢', 'unchanged');
+  fill('評估時間（台灣）', '2026-09-21T20:00'); fill('距 Sepsis 起始時數', '12'); fill('升壓劑趨勢', 'unchanged');
   await user.click(screen.getByRole('button', { name: 'AKI 評估' })); fill('目前實際體重', '80');
   await user.click(screen.getByRole('button', { name: '模式／ECMO' })); fill('目前使用 ECMO', 'false');
   await user.click(screen.getByRole('button', { name: '處方' }));

@@ -22,7 +22,7 @@ export function FormField({ field, value, error, onChange, disabled = false }: {
   return <div className={`workflow-field${field.type === 'json' ? ' json-field' : ''}`} data-field-key={field.key}><label htmlFor={id}>{field.label}</label>
     {field.type === 'boolean' || field.type === 'select' || field.type === 'numeric-select' ? <select {...shared}><option value="">未知／尚未記錄</option>{(field.type === 'boolean' ? [['true', '是'], ['false', '否']] : field.options ?? []).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
       : field.type === 'json' ? <textarea {...shared} rows={5} spellCheck={false}/>
-      : <input {...shared} type={field.type} step={field.type === 'number' ? 'any' : field.type === 'datetime-local' ? '0.001' : undefined} />}
+      : <input {...shared} type={field.type} step={field.type === 'number' ? 'any' : field.type === 'datetime-local' ? '1' : undefined} />}
     <small id={`${id}-help`}>{field.unit ? `${field.unit} · ` : ''}{field.help ?? '未確認請留空；未知不等於否。'}</small>
     {field.example && <details><summary>結構範例（格式示意，不會帶入資料）</summary><pre>{field.example}</pre></details>}
     {error && <span className="field-error" id={`${id}-error`} role="alert">{error}</span>}
