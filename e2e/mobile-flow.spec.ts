@@ -16,9 +16,20 @@ test('390×844 eight-step wizard saves a real timepoint without document overflo
   await expect(page.getByLabel('目前 SCr', { exact: true })).toBeFocused();
   await fillObservation(page);
   await expect(page.getByRole('region', { name: '是否進行透析' })).toContainText('建議立即評估啟動透析');
+  const mode = page.getByRole('region', { name: '透析模式建議' });
+  await expect(mode).toContainText('資料不足，暫不選定透析模式');
+  await mode.getByRole('button', { name: '前往填寫血流動力耐受性' }).click();
+  await expect(page.getByLabel('血流動力耐受性', { exact: true })).toBeFocused();
+  await page.getByLabel('血流動力耐受性', { exact: true }).selectOption('unstable');
+  await page.getByLabel('顱內壓風險', { exact: true }).selectOption('false');
+  await page.getByLabel('需要快速溶質清除', { exact: true }).selectOption('false');
+  await page.getByLabel('需要精準液體電解質控制', { exact: true }).selectOption('false');
+  await expect(mode).toContainText('優先討論 CRRT');
   for (const [index, label] of ['感染／休克', 'AKI 評估', '灌流／液體', 'KRT', '模式／ECMO', '處方', '選配 HA', '監測／脫離'].entries()) {
     await step(page, label);
     await expect(page.getByRole('progressbar', { name: '評估進度' })).toHaveAttribute('aria-valuenow', String(index + 1));
+    if (label === '處方') await expect(page.getByLabel('實際 CRRT 停止（UTC）')).toHaveCount(0);
+    if (label === '監測／脫離') await expect(page.getByLabel('實際 CRRT 停止（UTC）')).toHaveValue('');
     await expectNoHorizontalOverflow(page);
   }
   await step(page, 'AKI 評估');

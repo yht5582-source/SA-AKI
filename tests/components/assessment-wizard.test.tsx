@@ -60,6 +60,45 @@ it('shows a live dialysis recommendation for a confirmed emergency before saving
   expect((await caseRepository.getCase('c1'))?.snapshots).toHaveLength(0);
 });
 
+it('requires mode parameters after a confirmed KRT indication, then recommends a reviewable mode before saving', async () => {
+  const user = userEvent.setup(); mount();
+  await screen.findByRole('heading', { name: '感染／休克' });
+  await user.click(step('KRT'));
+  await user.type(screen.getByLabelText('鉀'), '6.5');
+  await user.selectOptions(screen.getByLabelText('難治性高血鉀'), 'true');
+  const mode = screen.getByRole('region', { name: '透析模式建議' });
+  expect(mode).toHaveTextContent('資料不足，暫不選定透析模式');
+  await user.click(within(mode).getByRole('button', { name: '前往填寫血流動力耐受性' }));
+  expect(screen.getByRole('heading', { name: '模式／ECMO' })).toBeVisible();
+  expect(screen.getByLabelText('血流動力耐受性')).toHaveFocus();
+  await user.selectOptions(screen.getByLabelText('血流動力耐受性'), 'unstable');
+  await user.selectOptions(screen.getByLabelText('顱內壓風險'), 'false');
+  await user.selectOptions(screen.getByLabelText('需要快速溶質清除'), 'false');
+  await user.selectOptions(screen.getByLabelText('需要精準液體電解質控制'), 'false');
+  await user.click(step('灌流／液體')); await user.type(screen.getByLabelText('MAP'), '56');
+  await user.click(step('感染／休克'));
+  await user.type(screen.getByLabelText('NE 等效劑量'), '0.3');
+  await user.selectOptions(screen.getByLabelText('升壓劑趨勢'), 'worsening');
+  await user.type(screen.getByLabelText('乳酸'), '3');
+  expect(mode).toHaveTextContent('優先討論 CRRT');
+  await user.click(step('灌流／液體'));
+  await user.clear(screen.getByLabelText('MAP'));
+  await user.type(screen.getByLabelText('MAP'), '-5');
+  expect(mode).toHaveTextContent('資料不足，暫不選定透析模式');
+  await user.click(within(mode).getByRole('button', { name: '前往修正MAP' }));
+  expect(screen.getByLabelText('MAP')).toHaveFocus();
+  expect((await caseRepository.getCase('c1'))?.snapshots).toHaveLength(0);
+});
+
+it('records actual CRRT stop in subsequent monitoring instead of asking for an end time in the initial prescription', async () => {
+  const user = userEvent.setup(); mount(); await screen.findByRole('heading', { name: '感染／休克' });
+  await user.click(step('處方'));
+  expect(screen.queryByLabelText('實際 CRRT 停止（UTC）')).not.toBeInTheDocument();
+  await user.click(step('監測／脫離'));
+  expect(screen.getByLabelText('實際 CRRT 停止（UTC）')).toHaveValue('');
+  expect(screen.getByText(/僅於實際停止或試停後記錄/)).toBeVisible();
+});
+
 it('distinguishes an unconfirmed danger from a fully checked decision to defer dialysis', async () => {
   const user = userEvent.setup(); mount();
   await screen.findByRole('heading', { name: '感染／休克' });

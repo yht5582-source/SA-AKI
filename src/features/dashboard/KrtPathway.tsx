@@ -1,21 +1,13 @@
 import { Link } from 'react-router-dom';
 import type { DecisionResult } from '../../clinical/types';
 import { dialysisAdvice } from '../../clinical/dialysisAdvice';
-import { stepFields } from '../assessment/steps/fields';
+import { modalityAdvice } from '../../clinical/modalityAdvice';
+import { fieldsForMissingItem } from '../assessment/modalityFields';
 
-const fieldTargets: readonly (readonly [string, string])[] = [
-  ['血鉀', 'potassiumMmolL'], ['高血鉀', 'potassiumMmolL'], ['arterial pH', 'arterialPh'], ['酸血症', 'arterialPh'], ['肺水腫', 'pulmonaryEdema'], ['尿毒', 'uremicManifestations'],
-  ['電解質異常', 'lifeThreateningElectrolyteDisturbance'], ['毒物', 'dialyzableToxin'], ['受控鈉', 'requiresControlledSodiumCorrection'],
-  ['MAP', 'mapMmHg'], ['升壓劑', 'norepinephrineEquivalentMcgKgMin'], ['lactate', 'lactateMmolL'], ['顱內壓', 'intracranialPressureRisk'],
-  ['血流動力耐受性', 'hemodynamicTolerance'], ['快速溶質清除', 'rapidSoluteClearanceNeeded'], ['精密液體', 'preciseFluidElectrolyteControlNeeded'],
-];
-
-function MissingItems({ items, caseId, fallback }: { items: string[]; caseId: string; fallback: string }) {
+function MissingItems({ items, caseId }: { items: string[]; caseId: string }) {
   return <ul className="krt-missing">{items.map((item, index) => {
-    const key = fieldTargets.find(([phrase]) => item.includes(phrase))?.[1] ?? fallback;
-    const field = stepFields.flat().find(candidate => candidate.key === key);
-    const label = field ? field.label : '相關資料';
-    return <li key={`${item}-${index}`}><span>{item}</span><Link to={`/case/${encodeURIComponent(caseId)}/assessment?field=${encodeURIComponent(key)}`} aria-label={`前往填寫${item.includes('血鉀') ? '血鉀' : label}`}>前往填寫</Link></li>;
+    const targets = fieldsForMissingItem(item);
+    return <li key={`${item}-${index}`}><span>{item}</span>{targets.map(({ key, label }) => <Link key={key} to={`/case/${encodeURIComponent(caseId)}/assessment?field=${encodeURIComponent(key)}`} aria-label={`前往填寫${item.includes('血鉀') ? '血鉀' : label}`}>前往填寫{targets.length > 1 ? ` ${label}` : ''}</Link>)}</li>;
   })}</ul>;
 }
 
@@ -37,13 +29,13 @@ export function KrtPathway({ decisions, caseId }: { decisions: DecisionResult[];
         {positives.length > 0 && <ul>{positives.map(item => <li key={item}>{item}</li>)}</ul>}
         <p>{indication.actions[0]}</p>
       </section>
-      <section><h3>3. 若需要 KRT，選哪種模式</h3>{confirmed ? <><p className="krt-answer">{modality.conclusion}</p><p>CRRT 用於循環不穩、顱內壓風險或需要精密液體／電解質控制等情境的團隊討論；若快速清除需求與腦／循環風險衝突，需專科權衡。</p>
+      <section><h3>3. 若需要 KRT，選哪種模式</h3><p className="krt-answer">{modalityAdvice(indication, modality)}</p>{confirmed ? <><p>{modality.missingData.length > 0 ? `暫時討論線索：${modality.conclusion}；須補齊資料後重評。` : modality.conclusion}</p><p>CRRT 用於循環不穩、顱內壓風險或需要精密液體／電解質控制等情境的團隊討論；若快速清除需求與腦／循環風險衝突，需專科權衡。</p>
         {modality.conclusion.includes('CRRT review') && <details><summary>CRRT 機制怎麼選？</summary><ul><li>CVVHD：以擴散清除小分子溶質為主。</li><li>CVVH：以對流清除為主。</li><li>CVVHDF：結合擴散與對流；無已證實存活優勢。</li><li>SCUF：以液體移除為主，不提供充分溶質清除；有酸鹼／電解質清除需求時不能以 SCUF 取代。</li></ul><p>實際選擇需核對溶質、液體目標、交付劑量、抗凝和本院設備；非機器處方。</p></details>}
-      </> : <p className="krt-answer">尚不選定 KRT 模式；先處理危險訊號並確認適應症。模式偏好不能成為啟動理由。</p>}</section>
+      </> : <p>先處理危險訊號並確認適應症。模式偏好不能成為啟動理由。</p>}</section>
     </div>
     {(indication.missingData.length > 0 || modality.missingData.length > 0) && <div className="krt-pathway-missing"><h3>待補資料</h3><p>已儲存時間點保留唯讀；從以下入口新增觀察。未知不等於正常，危急處置不等待填表。</p>
-      {indication.missingData.length > 0 && <><h4>KRT 適應症</h4><MissingItems items={indication.missingData} caseId={caseId} fallback="potassiumMmolL"/></>}
-      {modality.missingData.length > 0 && <><h4>模式評估（僅在 KRT 指徵確認後使用）</h4><MissingItems items={modality.missingData} caseId={caseId} fallback="hemodynamicTolerance"/></>}
+      {indication.missingData.length > 0 && <><h4>KRT 適應症</h4><MissingItems items={indication.missingData} caseId={caseId}/></>}
+      {modality.missingData.length > 0 && <><h4>模式評估（僅在 KRT 指徵確認後使用）</h4><MissingItems items={modality.missingData} caseId={caseId}/></>}
     </div>}
     <p className="krt-pathway-caveat">參考 KDIGO 與 SSC 2026；本機危險篩檢值與重評時限不是指引認定的啟動門檻。所有選項均需床邊複核，不能自動啟動或設定機器。</p>
   </section>;

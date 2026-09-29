@@ -4,12 +4,15 @@ import type { ClinicalSnapshot } from '../../clinical/types';
 import { evaluateHaEligibility } from '../../clinical/ha';
 import { evaluateKrtInitiation } from '../../clinical/krt';
 import { dialysisAdvice } from '../../clinical/dialysisAdvice';
+import { selectKrtModality } from '../../clinical/modality';
+import { modalityAdvice } from '../../clinical/modalityAdvice';
 import { z } from 'zod';
 import { caseExportSchema, clinicalSnapshotSchema } from '../../data/schema';
 import { caseRepository, type StoredCase } from '../../data/caseRepository';
 import { Stepper } from '../../components/Stepper';
 import { AssessmentStep } from './steps/AssessmentStep';
 import { allFields, haFields, haExposureFields, stepFields, stepLabels } from './steps/fields';
+import { fieldsForMissingItem } from './modalityFields';
 import { clearAssessmentDrafts, readDraft, writeDraft } from './draft';
 import { HaWarning } from '../ha/HaWarning';
 import { haStatusLabel } from '../ha/haPresentation';
@@ -28,6 +31,15 @@ const krtPreviewSchema = z.object({
   refractoryHyperkalemia: z.boolean().optional(), refractoryAcidemia: z.boolean().optional(), refractoryPulmonaryEdema: z.boolean().optional(),
   lifeThreateningElectrolyteDisturbance: z.boolean().optional(), dialyzableToxin: z.boolean().optional(),
   requiresControlledSodiumCorrection: z.boolean().optional(),
+});
+const modalityPreviewSchema = z.object({
+  mapMmHg: z.number().finite().nonnegative().optional(), norepinephrineEquivalentMcgKgMin: z.number().finite().nonnegative().optional(),
+  vasopressorTrend: z.enum(['improving', 'unchanged', 'worsening']).optional(), lactateMmolL: z.number().finite().nonnegative().optional(),
+  hemodynamicTolerance: z.enum(['stable', 'intermediate', 'unstable']).optional(), intracranialPressureRisk: z.boolean().optional(),
+  rapidSoluteClearanceNeeded: z.boolean().optional(), preciseFluidElectrolyteControlNeeded: z.boolean().optional(),
+  requiresControlledSodiumCorrection: z.boolean().optional(), capillaryRefillSeconds: z.number().finite().nonnegative().optional(),
+  skinMottling: z.boolean().optional(), peripheralTemperature: z.enum(['warm', 'cool']).optional(),
+  mentalStatus: z.enum(['alert', 'altered', 'unresponsive', 'sedated']).optional(),
 });
 
 function candidateFrom(values: Record<string, string>, caseId: string, snapshotId: string, haEnabled: boolean): Record<string, unknown> {
@@ -95,6 +107,8 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   const krtPreview = krtPreviewSchema.safeParse(candidate);
   const krtIndication = krtPreview.success ? evaluateKrtInitiation(krtPreview.data)[0] : undefined;
   const krtAdvice = krtIndication && dialysisAdvice(krtIndication);
+  const modePreview = modalityPreviewSchema.safeParse(candidate);
+  const modeDecision = modePreview.success ? selectKrtModality(modePreview.data)[0] : undefined;
   const errors: Record<string, string> = {};
   if (!validation.success) for (const issue of validation.error.issues) {
     const path = issue.path.join('.');
@@ -144,6 +158,21 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
       {krtIndication?.missingData.length ? <details><summary>查看待確認的透析指徵資料（{krtIndication.missingData.length}）</summary><ul>{krtIndication.missingData.map(item => <li key={item}>{item}</li>)}</ul></details> : null}
       <p className="dialysis-advice-note">本頁是未儲存資料的即時篩檢；透析啟動及 CRRT 模式需床邊團隊確認，非自動醫囑。</p>
       {!readonly && draft.step !== 3 && <button type="button" className="button" onClick={() => selectStep(3)}>前往填寫透析指徵</button>}
+    </section>
+    <section className="modality-advice" aria-label="透析模式建議"><h2>若需要透析，哪種模式適合？</h2>
+      <p>{modalityAdvice(krtIndication, modeDecision)}</p>
+      {krtIndication?.severity === 'critical' && !modePreview.success && <>
+        <p>下列模式參數無效，請修正後重評：</p>
+        <ul className="modality-missing">{[...new Set(modePreview.error.issues.map(issue => String(issue.path[0])))].map(key => {
+          const label = allFields.find(field => field.key === key)?.label ?? key;
+          return <li key={key}><span>{label}</span><button type="button" className="button" disabled={readonly} onClick={() => completeMissingField(key)} aria-label={`前往修正${label}`}>前往修正{label}</button></li>;
+        })}</ul>
+      </>}
+      {krtIndication?.severity === 'critical' && modeDecision?.missingData.length ? <>
+        <p>模式評估尚缺以下資料；請逐項填寫並核對，資料會在本頁即時重評：</p>
+        <ul className="modality-missing">{modeDecision.missingData.map(item => <li key={item}><span>{item}</span>{fieldsForMissingItem(item).map(({ key, label }) => <button type="button" className="button" key={key} disabled={readonly} onClick={() => completeMissingField(key)} aria-label={`前往填寫${label}`}>前往填寫{label}</button>)}</li>)}</ul>
+      </> : null}
+      <small>循環不穩或有顱內壓風險可優先討論 CRRT；循環穩定且需快速清除可討論 IHD；介於兩者可討論 PIRRT。模式不構成透析啟動適應症。</small>
     </section>
     <div className="assessment-workspace"><section className="assessment-input"><h2 ref={heading} tabIndex={-1}>{review ? '最終檢視' : stepLabels[draft.step]}</h2>
       {(draft.step === 6 || draft.haEnabled) && <HaWarning/>}

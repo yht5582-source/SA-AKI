@@ -53,10 +53,13 @@ Version 0.1.0 contains:
 - anonymous adult case creation, IndexedDB storage for confirmed cases/snapshots, current-tab sessionStorage for unconfirmed assessment drafts, validated JSON import/export, and deletion;
 - an eight-step longitudinal assessment workflow;
 - explainable AKI/SA-AKI, fluid stewardship, KRT indication/modality/ECMO, CRRT prescription and anticoagulation, HA review, CRRT liberation, and descriptive trajectory decision modules;
+- a live two-stage KRT prompt: confirm whether urgent dialysis needs evaluation, then offer CRRT/IHD/PIRRT for team review only after the relevant mode parameters are supplied; missing measurements link directly to their editable fields;
 - a decision dashboard, 0–72-hour trend views, evidence-linked decision cards, and allowlisted bedside handoff summary;
 - evidence, privacy, governance, changelog, and offline-information pages.
 
 Unknown, conflicting, stale, malformed, or unverified inputs fail closed. Local thresholds and time ceilings are conservative operational conventions, not independently validated treatment thresholds. HA is opt-in and not a routine pathway; SSC 2026 conditionally suggests against routine blood purification and polymyxin B hemoperfusion in adult sepsis/septic shock. HA remains a restricted experimental adjunct in research, registry, or approved-protocol contexts.
+
+The initial CRRT prescription has no end-time requirement. Record `crrtStoppedTimestamp` only after an actual stop or supervised trial off, in the monitoring/liberation step; leave it blank while treatment continues or stop readiness is being assessed. A future actual stop timestamp is rejected relative to that observation's time. Existing schema-version-1 exports remain compatible.
 
 The app does not control medical devices, issue orders, transmit data to a care system, or provide individualized mortality or renal-recovery predictions.
 

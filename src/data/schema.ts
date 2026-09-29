@@ -304,6 +304,9 @@ export const clinicalSnapshotSchema: z.ZodType<ClinicalSnapshot> = z.strictObjec
   hemoadsorptionAssessment: hemoadsorptionAssessmentSchema.optional(),
   hemoadsorptionExposures: z.array(hemoadsorptionExposureSchema).optional(),
 }).superRefine((snapshot, context) => {
+  if (snapshot.crrtStoppedTimestamp && Date.parse(snapshot.crrtStoppedTimestamp) > Date.parse(snapshot.timestamp)) {
+    context.addIssue({ code: 'custom', path: ['crrtStoppedTimestamp'], message: 'Actual CRRT stop time must not be later than assessment time' });
+  }
   if (
     snapshot.crrtStartedTimestamp
     && snapshot.crrtStoppedTimestamp
