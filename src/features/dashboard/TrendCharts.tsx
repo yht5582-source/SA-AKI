@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ClinicalSnapshot, PatientCase } from '../../clinical/types';
 import { normalizeUrineOutput } from '../../utils/units';
+import { formatTaipeiDateTime } from '../../clinical/taipeiTime';
 
 const trendMetrics = [
   { key: 'creatinineMgDl', label: 'SCr', unit: 'mg/dL' },
@@ -27,7 +28,7 @@ function sameNormalization(left: ClinicalSnapshot | undefined, right: ClinicalSn
 }
 function measurementBasis(snapshot: ClinicalSnapshot | undefined, metric: Metric): string {
   return metric.key === 'urineRate' ? `${snapshot?.urineWeightBasis ?? '未知'} / ${snapshot?.urineNormalizationWeightKg ?? '未知'} kg / ${snapshot?.urineObservationHours ?? '未知'} h`
-    : metric.key === 'deliveredEffluentMlKgHours' ? `${snapshot?.crrtDoseWeightBasis ?? '未知'} / ${snapshot?.crrtDoseWeightKg ?? '未知'} kg` : snapshot?.timestamp ?? '尚無觀察';
+    : metric.key === 'deliveredEffluentMlKgHours' ? `${snapshot?.crrtDoseWeightBasis ?? '未知'} / ${snapshot?.crrtDoseWeightKg ?? '未知'} kg` : snapshot ? formatTaipeiDateTime(snapshot.timestamp) : '尚無觀察';
 }
 /** Scheduled landmarks are explicit unknowns; no interpolation, resampling or last-value carry. */
 function buildTrendSeries(patient: PatientCase, snapshots: ClinicalSnapshot[], metric: Metric, delta = false) {
@@ -75,7 +76,7 @@ export function TrendCharts({ patient, snapshots }: { patient: PatientCase; snap
   const [delta, setDelta] = useState(false);
   return <section className="trend-charts" aria-label="0–72 小時病程" id="trajectory"><h2>0–72 小時病程</h2>
     <p>時間軸：距 sepsis 起始時數。缺值不補零、不跨缺值連線；線段僅連接相鄰已知觀察，不表示連續量測。病例 SCr 基準優先，其餘使用首個時間點；首點缺值時不另找替代基準。</p>
-    <p>SCr 來源：{patient.baselineCreatinineSource ?? '未記錄'}；可信度：{patient.baselineCreatinineConfidence ?? '未記錄'}；基準時間：{patient.baselineCreatinineTimestamp ?? '未記錄'}。尿量／劑量體重或基準不同、未知時不連線，變化量標為缺值；重複時間點不擅自選值。</p>
+    <p>SCr 來源：{patient.baselineCreatinineSource ?? '未記錄'}；可信度：{patient.baselineCreatinineConfidence ?? '未記錄'}；基準時間：{patient.baselineCreatinineTimestamp ? formatTaipeiDateTime(patient.baselineCreatinineTimestamp) : '未記錄'}。尿量／劑量體重或基準不同、未知時不連線，變化量標為缺值；重複時間點不擅自選值。</p>
     <div className="workflow-actions" aria-label="趨勢顯示方式"><button className="button" aria-pressed={!delta} onClick={() => setDelta(false)}>絕對值</button><button className="button" aria-pressed={delta} onClick={() => setDelta(true)}>相對基準變化</button></div>
     {trendMetrics.map(metric => <TrendPanel key={metric.key} patient={patient} snapshots={snapshots} metric={metric} delta={delta}/>)}
   </section>;

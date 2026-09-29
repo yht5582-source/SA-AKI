@@ -61,6 +61,8 @@ Unknown, conflicting, stale, malformed, or unverified inputs fail closed. Local 
 
 The initial CRRT prescription has no end-time requirement. Record `crrtStoppedTimestamp` only after an actual stop or supervised trial off, in the monitoring/liberation step; leave it blank while treatment continues or stop readiness is being assessed. A future actual stop timestamp is rejected relative to that observation's time. Existing schema-version-1 exports remain compatible.
 
+Clinical date and time inputs and human-readable results use Taiwan time (UTC+8), displayed to the second without milliseconds. This is independent of the device's time zone. Previously saved cases and assessment drafts appear in Taiwan time; editing unrelated fields preserves the original recorded instant, including any hidden fractional seconds. Validated JSON import/export and technical JSON subrecord editors retain ISO timestamps with explicit offsets and full precision for interoperability. Enter the offset explicitly in those JSON editors (for example `2026-09-21T14:30:00+08:00` or the equivalent `2026-09-21T06:30:00Z`).
+
 The app does not control medical devices, issue orders, transmit data to a care system, or provide individualized mortality or renal-recovery predictions.
 
 ### Manual review inputs and longitudinal HA documentation

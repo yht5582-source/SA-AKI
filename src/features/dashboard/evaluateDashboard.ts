@@ -9,6 +9,7 @@ import { evaluateHaDrugExposure, evaluateHaResponse, matchHaDevice } from '../..
 import type { ClinicalSnapshot, DecisionResult, PatientCase } from '../../clinical/types';
 import { duplicateSnapshotTimes, orderSnapshots, strictlyEarlierSnapshot } from './snapshotContext';
 import { reconcileHaExposures } from '../ha/exposureHistory';
+import { formatTaipeiDateTime } from '../../clinical/taipeiTime';
 
 export function sortDecisions(results: DecisionResult[]): DecisionResult[] {
   const priority = { critical: 0, warning: 1, monitor: 2, stable: 3 };
@@ -106,7 +107,7 @@ export function evaluateDashboard(patient: PatientCase, snapshots: ClinicalSnaps
   const duplicateTimes = duplicateSnapshotTimes(ordered);
   if (duplicateTimes.length) results.push({
     id: 'snapshot-time-provenance', severity: 'warning', conclusion: '同一時間點有多筆觀察；時間來源需立即核對',
-    evidence: duplicateTimes.map(time => `${new Date(time).toISOString()}：${ordered.filter(snapshot => Date.parse(snapshot.timestamp) === time).length} 筆觀察；不推定先後或相互取代。`),
+    evidence: duplicateTimes.map(time => `${formatTaipeiDateTime(new Date(time).toISOString())}：${ordered.filter(snapshot => Date.parse(snapshot.timestamp) === time).length} 筆觀察；不推定先後或相互取代。`),
     missingData: ['同時觀察的先後、量測來源及適用資料；重複時間不代表已確認連續趨勢。'],
     actions: ['核對所有同時觀察；液體比較僅採唯一且嚴格較早的時間點，模糊比較保留未知。'],
     reassessWithinHours: 0, counterfactuals: ['釐清原始時間與紀錄關係後重新評估；其他危險訊號與床邊處置不可因資料歧義而延誤。'], sourceIds: [],

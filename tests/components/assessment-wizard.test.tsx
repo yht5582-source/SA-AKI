@@ -60,6 +60,35 @@ it('shows a live dialysis recommendation for a confirmed emergency before saving
   expect((await caseRepository.getCase('c1'))?.snapshots).toHaveLength(0);
 });
 
+it('records a Taiwan wall time as the corresponding UTC instant while showing no milliseconds', async () => {
+  const user = userEvent.setup(); mount(); await screen.findByRole('heading', { name: '感染／休克' });
+  await user.type(screen.getByLabelText('評估時間（台灣）'), '2026-09-21T14:30');
+  expect(screen.getByLabelText('評估時間（台灣）')).toHaveValue('2026-09-21T14:30');
+  await user.type(screen.getByLabelText('距 Sepsis 起始時數'), '6');
+  await user.click(step('AKI 評估')); await user.type(screen.getByLabelText('目前實際體重'), '70');
+  await user.click(step('模式／ECMO')); await user.selectOptions(screen.getByLabelText('目前使用 ECMO'), 'false');
+  await user.click(screen.getByRole('button', { name: '檢視並確認' }));
+  expect(screen.getByText('評估時間（台灣）：2026-09-21 14:30:00（台灣時間）')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: '確認儲存時間點' }));
+  await screen.findByText('時間點已儲存');
+  expect((await caseRepository.getCase('c1'))?.snapshots[0].timestamp).toBe('2026-09-21T06:30:00.000Z');
+});
+
+it('resumes a preexisting UTC draft without changing its fractional-second instant on save', async () => {
+  sessionStorage.setItem('sa-aki:assessment-draft:v1:c1', JSON.stringify({
+    values: { timestamp: '2026-09-21T06:30:45.375', hoursFromSepsisOnset: '6', actualWeightKg: '70', onEcmo: 'false' },
+    step: 0, haEnabled: false,
+  }));
+  const user = userEvent.setup(); mount();
+  await screen.findByRole('heading', { name: '感染／休克' });
+  expect(screen.getByLabelText('評估時間（台灣）')).toHaveValue('2026-09-21T14:30:45');
+  await user.click(screen.getByRole('button', { name: '檢視並確認' }));
+  expect(screen.getByText('評估時間（台灣）：2026-09-21 14:30:45（台灣時間）')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: '確認儲存時間點' }));
+  await screen.findByText('時間點已儲存');
+  expect((await caseRepository.getCase('c1'))?.snapshots[0].timestamp).toBe('2026-09-21T06:30:45.375Z');
+});
+
 it('requires mode parameters after a confirmed KRT indication, then recommends a reviewable mode before saving', async () => {
   const user = userEvent.setup(); mount();
   await screen.findByRole('heading', { name: '感染／休克' });
@@ -93,9 +122,9 @@ it('requires mode parameters after a confirmed KRT indication, then recommends a
 it('records actual CRRT stop in subsequent monitoring instead of asking for an end time in the initial prescription', async () => {
   const user = userEvent.setup(); mount(); await screen.findByRole('heading', { name: '感染／休克' });
   await user.click(step('處方'));
-  expect(screen.queryByLabelText('實際 CRRT 停止（UTC）')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('實際 CRRT 停止（台灣）')).not.toBeInTheDocument();
   await user.click(step('監測／脫離'));
-  expect(screen.getByLabelText('實際 CRRT 停止（UTC）')).toHaveValue('');
+  expect(screen.getByLabelText('實際 CRRT 停止（台灣）')).toHaveValue('');
   expect(screen.getByText(/僅於實際停止或試停後記錄/)).toBeVisible();
 });
 
@@ -158,7 +187,7 @@ it('only saves after review confirmation and reopens a validated snapshot withou
   const user = userEvent.setup(); const view = mount(); await screen.findByRole('heading', { name: '感染／休克' });
   expect(screen.getByText('未確認草稿以 sessionStorage 嘗試保留於目前分頁工作階段；尚未儲存至病例。儲存後會嘗試清除，若瀏覽器拒絕則顯示警示。')).toBeVisible();
   await user.type(screen.getByLabelText('距 Sepsis 起始時數'), '6');
-  await user.type(screen.getByLabelText('評估時間（UTC）'), '2026-09-21T06:00');
+  await user.type(screen.getByLabelText('評估時間（台灣）'), '2026-09-21T06:00');
   await user.click(step('AKI 評估')); await user.type(screen.getByLabelText('目前實際體重'), '70');
   await user.click(step('模式／ECMO')); await user.selectOptions(screen.getByLabelText('目前使用 ECMO'), 'false');
   await user.click(screen.getByRole('button', { name: '檢視並確認' }));
@@ -183,7 +212,7 @@ it('only saves after review confirmation and reopens a validated snapshot withou
 it('keeps a successful snapshot save and warns when session draft cleanup is denied', async () => {
   const user = userEvent.setup(); mount(); await screen.findByRole('heading', { name: '感染／休克' });
   await user.type(screen.getByLabelText('距 Sepsis 起始時數'), '6');
-  await user.type(screen.getByLabelText('評估時間（UTC）'), '2026-09-21T06:00');
+  await user.type(screen.getByLabelText('評估時間（台灣）'), '2026-09-21T06:00');
   await user.click(step('AKI 評估')); await user.type(screen.getByLabelText('目前實際體重'), '70');
   await user.click(step('模式／ECMO')); await user.selectOptions(screen.getByLabelText('目前使用 ECMO'), 'false');
   await user.click(screen.getByRole('button', { name: '檢視並確認' }));
@@ -288,7 +317,7 @@ it.each(['2026-09-21T06:00:30Z', '2026-09-21T06:00:00.375Z'])(
     const user = userEvent.setup();
     render(<MemoryRouter basename="/SA-AKI" initialEntries={['/SA-AKI/case/precise-case/assessment/precise']}><ApplicationRoutes/></MemoryRouter>);
     await screen.findByText('已儲存時間點（唯讀）');
-    expect(screen.getByText(`評估時間（UTC）：${timestamp}`)).toBeVisible();
+    expect(screen.getByText(`評估時間（台灣）：${new Date(Date.parse(timestamp) + 8 * 3_600_000).toISOString().slice(0, 19).replace('T', ' ') }（台灣時間）`)).toBeVisible();
     expect(screen.queryByText('時間點與病例時間關係不一致，請修正後儲存。')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '返回編輯' }));
     await user.click(step('選配 HA'));
@@ -313,7 +342,7 @@ it('does not promote a saved incomplete HA observation to an eligibility claim e
 
 it('preserves validated HA measurements when the user opts out without creating an HA assessment', async () => {
   const user = userEvent.setup(); mount(); await screen.findByRole('heading', { name: '感染／休克' });
-  await user.type(screen.getByLabelText('評估時間（UTC）'), '2026-09-21T04:00');
+  await user.type(screen.getByLabelText('評估時間（台灣）'), '2026-09-21T04:00');
   await user.type(screen.getByLabelText('距 Sepsis 起始時數'), '4');
   await user.click(step('AKI 評估')); await user.type(screen.getByLabelText('目前實際體重'), '70');
   await user.click(step('模式／ECMO')); await user.selectOptions(screen.getByLabelText('目前使用 ECMO'), 'false');
