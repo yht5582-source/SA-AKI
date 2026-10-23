@@ -4,7 +4,9 @@ const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1_000;
 export function fromTaipeiInput(raw: string): string {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(raw)) return raw;
   const parsed = Date.parse(`${raw}+08:00`);
-  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : raw;
+  // Date.parse rolls impossible dates (02-30) forward; keep them raw so validation rejects them.
+  if (!Number.isFinite(parsed) || toTaipeiInput(new Date(parsed).toISOString()).slice(0, 16) !== raw.slice(0, 16)) return raw;
+  return new Date(parsed).toISOString();
 }
 
 export function toTaipeiInput(instant: string): string {

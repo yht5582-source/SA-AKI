@@ -126,3 +126,10 @@ describe('modality/ECMO schema import', () => {
     expect(clinicalSnapshotSchema.safeParse({ ...snapshot(), ...extra }).success).toBe(false);
   });
 });
+
+describe('audit regressions 2026-10-23', () => {
+  it('keeps the CRRT preference for ICP risk even when the stable label conflicts with pressor use', () => {
+    const [decision] = selectKrtModality({ hemodynamicTolerance: 'stable', norepinephrineEquivalentMcgKgMin: 0.1, intracranialPressureRisk: true, mapMmHg: 70, vasopressorTrend: 'unchanged', lactateMmolL: 1.5 });
+    expect(decision.conclusion).toContain('CRRT review');
+  });
+});

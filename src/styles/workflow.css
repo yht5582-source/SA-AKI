@@ -32,7 +32,7 @@
 .assessment-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 16px; }
 .assessment-fields + p { margin-top: 16px; }
 .assessment-actions { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px 0; background: var(--surface); }
-.assessment-actions small { width: 100%; }
+.draft-notice { display: block; color: var(--muted); padding-bottom: 16px; }
 .missing-data li > span { flex: 1; min-width: 0; }
 .missing-data li > .button { margin-left: auto; padding: 6px 10px; min-height: 36px; white-space: nowrap; }
 .missing-case-data { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }

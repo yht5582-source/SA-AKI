@@ -1,8 +1,9 @@
 import type { FieldDefinition } from '../../../components/FormField';
+import { optionLabels } from '../../../clinical/display';
 
 const n = (key: string, label: string, unit: string, help = '可接受範圍：≥ 0；未知請留空。'): FieldDefinition => ({ key, label, type: 'number', unit, help });
 const b = (key: string, label: string): FieldDefinition => ({ key, label, type: 'boolean' });
-const s = (key: string, label: string, options: string[]): FieldDefinition => ({ key, label, type: 'select', options: options.map(value => [value, value]) });
+const s = (key: string, label: string, options: string[]): FieldDefinition => ({ key, label, type: 'select', options: options.map(value => [value, optionLabels[value] ?? value]) });
 const time = (key: string, label: string, help = '台灣時間（UTC+8）；未確認請留空。'): FieldDefinition => ({ key, label, type: 'datetime-local', help });
 const weight = ['actual', 'ideal', 'adjusted'];
 const prescriptionFields: FieldDefinition[] = [

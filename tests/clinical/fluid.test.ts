@@ -19,10 +19,10 @@ describe('fluid decisions explain their own clinical triggers', () => {
     [{ mapMmHg: 60 }, 'MAP 60 mmHg'],
     [{ lactateMmolL: 4 }, 'lactate 4 mmol/L'],
     [{ capillaryRefillSeconds: 4 }, 'CRT 4 s'],
-    [{ vasopressorTrend: 'worsening' }, '趨勢 worsening'],
-    [{ skinMottling: true }, 'mottling true'],
-    [{ peripheralTemperature: 'cool' }, '周邊溫度 cool'],
-    [{ mentalStatus: 'altered' }, '意識 altered'],
+    [{ vasopressorTrend: 'worsening' }, '趨勢 惡化'],
+    [{ skinMottling: true }, 'mottling 是'],
+    [{ peripheralTemperature: 'cool' }, '周邊溫度 冰冷'],
+    [{ mentalStatus: 'altered' }, '意識 意識改變'],
   ] satisfies [Partial<ClinicalSnapshot>, string][])('includes the challenge-triggering observation %j in that card', (extra, observation) => {
     const plan = result({ ...stable, ...clearTolerance, passiveLegRaiseResult: 'responsive', vtiResponsePercent: 15, urineVolumeMl: 123, urineObservationHours: 6, ...extra }, 'fluid-plan');
     expect(plan.conclusion).toContain('可考慮');
@@ -37,21 +37,21 @@ describe('fluid decisions explain their own clinical triggers', () => {
   });
   // Catches evacuation claims detached from the actual congestion observation.
   it.each([
-    [{ pulmonaryEdema: true }, '肺水腫 true'],
-    [{ lungBLines: 'bilateral-diffuse' }, 'B-lines bilateral-diffuse'],
+    [{ pulmonaryEdema: true }, '肺水腫 是'],
+    [{ lungBLines: 'bilateral-diffuse' }, 'B-lines 雙側瀰漫'],
     [{ vexusGrade: 3 }, 'VExUS 3'],
   ] satisfies [Partial<ClinicalSnapshot>, string][])('includes the evacuation-triggering congestion %j in the ROSE card', (extra, observation) => {
     const rose = result({ ...stable, cumulativeFluidBalanceMl: 4000, passiveLegRaiseResult: 'responsive', vtiResponsePercent: 15, ...extra }, 'fluid-rose');
     expect(rose.conclusion).toContain('evacuation');
     expect(rose.evidence.join(' ')).toContain(observation);
     expect(rose.evidence.join(' ')).toContain('累積平衡 4000 mL');
-    expect(rose.evidence.join(' ')).not.toContain('PLR responsive');
+    expect(rose.evidence.join(' ')).not.toContain('PLR 有反應');
   });
   it('explains optimization due to rising respiratory support despite reassuring perfusion', () => {
     const decisions = evaluateFluid(snapshot({ ...stable, ...clearTolerance, respiratorySupport: 'invasive-ventilation' }), prior({ respiratorySupport: 'conventional-oxygen' }));
     const rose = byId(decisions, 'fluid-rose');
     expect(rose.conclusion).toContain('optimization');
-    expect(rose.evidence.join(' ')).toContain('呼吸支持 invasive-ventilation');
+    expect(rose.evidence.join(' ')).toContain('呼吸支持 侵襲性通氣');
     expect(rose.evidence.join(' ')).toContain('近期氧合惡化 有訊號');
   });
   it('explains optimization due to declining P/F despite reassuring perfusion', () => {

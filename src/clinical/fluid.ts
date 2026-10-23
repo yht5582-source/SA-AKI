@@ -1,6 +1,7 @@
 import { clinicalSnapshotSchema } from '../data/schema';
 import { resolveRuleSources } from './sources';
 import type { ClinicalSnapshot, DecisionResult } from './types';
+import { zh } from './display';
 
 type RosePhase = 'resuscitation' | 'optimization' | 'stabilization' | 'evacuation';
 type Axis = boolean | 'unknown';
@@ -92,20 +93,20 @@ export function evaluateFluid(snapshot: ClinicalSnapshot, previous?: ClinicalSna
   const conflict = state.responsive === true && state.tolerance === false;
   const urgent = state.perfusionConcern || state.tolerance === false;
   const dynamicEvidence = [
-    `PLR ${snapshot.passiveLegRaiseResult ?? '未知'}；VTI 變化 ${snapshot.vtiResponsePercent ?? '未知'}%；SV 變化 ${snapshot.strokeVolumeResponsePercent ?? '未知'}%`,
+    `PLR ${zh(snapshot.passiveLegRaiseResult)}；VTI 變化 ${snapshot.vtiResponsePercent ?? '未知'}%；SV 變化 ${snapshot.strokeVolumeResponsePercent ?? '未知'}%`,
     'app-local：PLR + VTI/SV 增加 ≥10% 且標記一致視為陽性；試驗方法與精確度需現場確認，非所有動態試驗通用閾值',
     `CVP ${snapshot.cvpMmHg ?? '未知'} mmHg；IVC ${snapshot.ivcDiameterMm ?? '未知'} mm／變異 ${snapshot.ivcRespiratoryVariationPercent ?? '未知'}%；CVP 或 IVC 單獨不能觸發輸液`,
   ];
   const toleranceEvidence = [
-    `肺水腫 ${snapshot.pulmonaryEdema ?? '未知'}；B-lines ${snapshot.lungBLines ?? '未知'}；VExUS ${snapshot.vexusGrade ?? '未知'}`,
-    `P/F ${snapshot.pao2Fio2RatioMmHg ?? '未知'} mmHg；呼吸支持 ${snapshot.respiratorySupport ?? '未知'}；近期氧合惡化 ${state.oxygenWorsening ? '有訊號' : '未證實（不代表排除）'}`,
-    `LV ${snapshot.lvSystolicFunction ?? '未知'}；RV ${snapshot.rvFunction ?? '未知'}；RV 擴張 ${snapshot.rvDilation ?? '未知'}`,
+    `肺水腫 ${zh(snapshot.pulmonaryEdema)}；B-lines ${zh(snapshot.lungBLines)}；VExUS ${snapshot.vexusGrade ?? '未知'}`,
+    `P/F ${snapshot.pao2Fio2RatioMmHg ?? '未知'} mmHg；呼吸支持 ${zh(snapshot.respiratorySupport)}；近期氧合惡化 ${state.oxygenWorsening ? '有訊號' : '未證實（不代表排除）'}`,
+    `LV ${zh(snapshot.lvSystolicFunction)}；RV ${zh(snapshot.rvFunction)}；RV 擴張 ${zh(snapshot.rvDilation)}`,
     'app-local：肺水腫、雙側瀰漫 B-lines、VExUS ≥2 或近期氧合惡化為安全警示；不是病因診斷或單獨去除液體適應症',
   ];
   const perfusionEvidence = [
     `MAP ${snapshot.mapMmHg ?? '未知'} mmHg；lactate ${snapshot.lactateMmolL ?? '未知'} mmol/L；CRT ${snapshot.capillaryRefillSeconds ?? '未知'} s`,
-    `NE-equivalent ${snapshot.norepinephrineEquivalentMcgKgMin ?? '未知'} mcg/kg/min；趨勢 ${snapshot.vasopressorTrend ?? '未知'}${state.pressorConflict ? '；數值上升與標記不一致，安全上採惡化訊號' : ''}`,
-    `${state.lactateTrend}；mottling ${snapshot.skinMottling ?? '未知'}；周邊溫度 ${snapshot.peripheralTemperature ?? '未知'}；意識 ${snapshot.mentalStatus ?? '未知'}`,
+    `NE-equivalent ${snapshot.norepinephrineEquivalentMcgKgMin ?? '未知'} mcg/kg/min；趨勢 ${zh(snapshot.vasopressorTrend)}${state.pressorConflict ? '；數值上升與標記不一致，安全上採惡化訊號' : ''}`,
+    `${state.lactateTrend}；mottling ${zh(snapshot.skinMottling)}；周邊溫度 ${zh(snapshot.peripheralTemperature)}；意識 ${zh(snapshot.mentalStatus)}`,
     'app-local：MAP <65、lactate >2 或 CRT >3 為灌流複核觸發點，不等同休克確診或個別治療目標；數值趨勢限同案 ≤6 h',
   ];
   const balanceEvidence = [

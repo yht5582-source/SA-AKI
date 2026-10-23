@@ -1,5 +1,6 @@
 import type { ClinicalSnapshot, DecisionResult } from './types';
 import { resolveRuleSources } from './sources';
+import { zh } from './display';
 
 /** Pure triage support. Numeric screens establish urgency, never refractoriness. */
 export function evaluateKrtInitiation(s: Partial<ClinicalSnapshot>): DecisionResult[] {
@@ -23,10 +24,10 @@ export function evaluateKrtInitiation(s: Partial<ClinicalSnapshot>): DecisionRes
     [s.requiresControlledSodiumCorrection, '特殊受控鈉校正的專科確認'],
   ] as const) if (flag === undefined) missingData.push(label);
 
-  if (finite(s.potassiumMmolL)) evidence.push(`血鉀 ${s.potassiumMmolL} mmol/L；治療難治性 ${s.refractoryHyperkalemia ?? '未知'}`);
-  if (finite(s.arterialPh)) evidence.push(`arterial pH ${s.arterialPh}；治療難治性 ${s.refractoryAcidemia ?? '未知'}`);
+  if (finite(s.potassiumMmolL)) evidence.push(`血鉀 ${s.potassiumMmolL} mmol/L；治療難治性 ${zh(s.refractoryHyperkalemia)}`);
+  if (finite(s.arterialPh)) evidence.push(`arterial pH ${s.arterialPh}；治療難治性 ${zh(s.refractoryAcidemia)}`);
   if (finite(s.bicarbonateMmolL)) evidence.push(`HCO3 ${s.bicarbonateMmolL} mmol/L`);
-  if (s.pulmonaryEdema !== undefined || s.refractoryPulmonaryEdema !== undefined) evidence.push(`肺水腫 ${s.pulmonaryEdema ?? '未知'}；P/F ${s.pao2Fio2RatioMmHg ?? '未知'} mmHg；呼吸支持 ${s.respiratorySupport ?? '未知'}；對醫療與呼吸支持難治性 ${s.refractoryPulmonaryEdema ?? '未知'}`);
+  if (s.pulmonaryEdema !== undefined || s.refractoryPulmonaryEdema !== undefined) evidence.push(`肺水腫 ${zh(s.pulmonaryEdema)}；P/F ${s.pao2Fio2RatioMmHg ?? '未知'} mmHg；呼吸支持 ${zh(s.respiratorySupport)}；對醫療與呼吸支持難治性 ${zh(s.refractoryPulmonaryEdema)}`);
   if (s.uremicManifestations !== undefined) evidence.push(`尿毒表現 ${s.uremicManifestations.join(', ') || '明確評估未見'}`);
 
   if (highK && s.refractoryHyperkalemia === true) confirmed.push('有相符高血鉀且已確認對適當治療難治');

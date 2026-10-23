@@ -13,3 +13,8 @@ it('shows Taipei time to seconds without milliseconds, including midnight rollov
   expect(formatTaipeiTimestamps('藥物 2026-09-21T07:00:00.125Z；TDM 2026-09-21T16:30:15+08:00'))
     .toBe('藥物 2026-09-21 15:00:00（台灣時間）；TDM 2026-09-21 16:30:15（台灣時間）');
 });
+
+it('keeps impossible calendar dates raw instead of rolling them into the next month', () => {
+  expect(fromTaipeiInput('2026-02-30T10:00')).toBe('2026-02-30T10:00');
+  expect(fromTaipeiInput('2026-02-28T10:00')).toBe('2026-02-28T02:00:00.000Z');
+});

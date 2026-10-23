@@ -107,7 +107,7 @@ export function calculatePrescription(input: PrescriptionInput): CrrtPrescriptio
   if (validFlows) {
     const replacement = pre + post;
     const modeMatches = (input.mode === 'CVVHD' && qd > 0 && replacement === 0)
-      || (input.mode === 'CVVH' && qd === 0 && replacement > 0)
+      || (input.mode === 'CVVH' && qd === 0 && replacement + (nonnegative(pbp) ? pbp : 0) > 0)
       || (input.mode === 'CVVHDF' && qd > 0 && replacement > 0);
     if (!modeMatches) missingData.push('Confirm CVVHD dialysate-only, CVVH replacement-only, or CVVHDF combined flows; SCUF is not a solute-dose mode');
   } else if (!input.mode) missingData.push('Select CVVHD / CVVH / CVVHDF');

@@ -215,6 +215,6 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
         const draftCleared = clearAssessmentDrafts(stored.case.id);
         navigate(`/case/${encodeURIComponent(stored.case.id)}/assessment/${id}`, { replace: true, state: { saved: true, draftCleanupFailed: !draftCleared } });
       } catch { setError('儲存失敗；資料未確認寫入，請重試。'); } finally { setBusy(false); }
-    }}>確認儲存時間點</button>}</> : <><button type="button" className="button" onClick={goToPreviousStep}>{draft.step === 0 ? '上一步：病例資料' : '上一步'}</button><button type="button" className="button primary" disabled={draft.step === 7} onClick={() => setDraft(current => ({ ...current, step: current.step + 1 }))}>下一步</button><button type="button" className="button" onClick={() => setReview(true)}>檢視並確認</button></>}<small>未確認草稿以 sessionStorage 嘗試保留於目前分頁工作階段；尚未儲存至病例。儲存後會嘗試清除，若瀏覽器拒絕則顯示警示。</small></div>
+    }}>確認儲存時間點</button>}</> : <><button type="button" className="button" onClick={goToPreviousStep}>{draft.step === 0 ? '上一步：病例資料' : '上一步'}</button><button type="button" className="button primary" disabled={draft.step === 7} onClick={() => setDraft(current => ({ ...current, step: current.step + 1 }))}>下一步</button><button type="button" className="button" onClick={() => setReview(true)}>檢視並確認</button></>}</div><small className="draft-notice">未確認草稿以 sessionStorage 嘗試保留於目前分頁工作階段；尚未儲存至病例。儲存後會嘗試清除，若瀏覽器拒絕則顯示警示。</small>
   </section>;
 }

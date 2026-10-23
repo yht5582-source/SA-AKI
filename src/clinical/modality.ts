@@ -1,5 +1,6 @@
 import type { ClinicalSnapshot, DecisionResult } from './types';
 import { resolveRuleSources } from './sources';
+import { zh } from './display';
 
 /** Options are conditional on a separately confirmed KRT indication. */
 export function selectKrtModality(s: Partial<ClinicalSnapshot>): DecisionResult[] {
@@ -21,8 +22,10 @@ export function selectKrtModality(s: Partial<ClinicalSnapshot>): DecisionResult[
   if (s.rapidSoluteClearanceNeeded === undefined) missingData.push('是否需快速溶質清除');
   if (s.preciseFluidElectrolyteControlNeeded === undefined) missingData.push('是否需精密液體／電解質控制');
   const precision = s.preciseFluidElectrolyteControlNeeded === true || s.requiresControlledSodiumCorrection === true;
-  const option = conflict ? '資料不足或衝突，暫不偏好單一模式'
-    : unstable || s.intracranialPressureRisk === true || precision ? 'CRRT review'
+  // ICP risk or precision needs favour CRRT whatever the hemodynamic label says; a label conflict cannot hide them.
+  const option = s.intracranialPressureRisk === true || precision ? 'CRRT review'
+    : conflict ? '資料不足或衝突，暫不偏好單一模式'
+    : unstable ? 'CRRT review'
     : stable && s.intracranialPressureRisk === false && s.preciseFluidElectrolyteControlNeeded === false ? 'IHD review'
       : s.hemodynamicTolerance === 'intermediate' && knownPerfusion && !perfusionConcern && s.intracranialPressureRisk === false && s.preciseFluidElectrolyteControlNeeded === false ? 'PIRRT review'
         : '資料不足或衝突，暫不偏好單一模式';
@@ -31,9 +34,9 @@ export function selectKrtModality(s: Partial<ClinicalSnapshot>): DecisionResult[
     conclusion: `若 KRT 適應症另經確認：${option}；僅供團隊討論，非機器處方`,
     evidence: [
       'KDIGO 最終指引支持不穩定／顱內壓風險時 CRRT 選項；本機穩定篩檢為 local convention；各模式無已證實存活優勢',
-      `耐受性 ${s.hemodynamicTolerance ?? '未知'}；MAP ${s.mapMmHg ?? '未知'} mmHg；升壓劑 ${s.norepinephrineEquivalentMcgKgMin ?? '未知'} mcg/kg/min；趨勢 ${s.vasopressorTrend ?? '未知'}；lactate ${s.lactateMmolL ?? '未知'} mmol/L`,
-      `CRT ${s.capillaryRefillSeconds ?? '未知'} s；mottling ${s.skinMottling ?? '未知'}；周邊溫度 ${s.peripheralTemperature ?? '未知'}；意識 ${s.mentalStatus ?? '未知'}`,
-      `顱內壓風險 ${s.intracranialPressureRisk ?? '未知'}；快速清除需求 ${s.rapidSoluteClearanceNeeded ?? '未知'}；精密控制需求 ${precision ? '已確認' : s.preciseFluidElectrolyteControlNeeded === false ? '未見' : '未知'}`,
+      `耐受性 ${zh(s.hemodynamicTolerance)}；MAP ${s.mapMmHg ?? '未知'} mmHg；升壓劑 ${s.norepinephrineEquivalentMcgKgMin ?? '未知'} mcg/kg/min；趨勢 ${zh(s.vasopressorTrend)}；lactate ${s.lactateMmolL ?? '未知'} mmol/L`,
+      `CRT ${s.capillaryRefillSeconds ?? '未知'} s；mottling ${zh(s.skinMottling)}；周邊溫度 ${zh(s.peripheralTemperature)}；意識 ${zh(s.mentalStatus)}`,
+      `顱內壓風險 ${zh(s.intracranialPressureRisk)}；快速清除需求 ${zh(s.rapidSoluteClearanceNeeded)}；精密控制需求 ${precision ? '已確認' : s.preciseFluidElectrolyteControlNeeded === false ? '未見' : '未知'}`,
       ...(conflict ? ['穩定標籤與 MAP／升壓／灌流資料衝突；不可優先套用 IHD'] : []),
     ],
     missingData,
