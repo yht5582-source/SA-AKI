@@ -1,3 +1,5 @@
+import { modalityAdvice } from '../../src/clinical/modalityAdvice';
+import type { DecisionResult } from '../../src/clinical/types';
 import { evaluateEcmoConnection, selectKrtModality } from '../../src/clinical/modality';
 import { resolveRuleSources } from '../../src/clinical/sources';
 import type { ClinicalSnapshot } from '../../src/clinical/types';
@@ -17,7 +19,7 @@ describe('conditional modality review, never initiation', () => {
   // Catches missing precision-control assessment being silently interpreted as false.
   it.each([
     ['stable', undefined, '資料不足或衝突，暫不偏好單一模式'],
-    ['stable', false, 'IHD review'],
+    ['stable', false, 'IHD 或 PIRRT review'],
     ['stable', true, 'CRRT review'],
     ['intermediate', undefined, '資料不足或衝突，暫不偏好單一模式'],
     ['intermediate', false, 'PIRRT review'],
@@ -131,5 +133,11 @@ describe('audit regressions 2026-10-23', () => {
   it('keeps the CRRT preference for ICP risk even when the stable label conflicts with pressor use', () => {
     const [decision] = selectKrtModality({ hemodynamicTolerance: 'stable', norepinephrineEquivalentMcgKgMin: 0.1, intracranialPressureRisk: true, mapMmHg: 70, vasopressorTrend: 'unchanged', lactateMmolL: 1.5 });
     expect(decision.conclusion).toContain('CRRT review');
+  });
+  it('uses the rapid-clearance need: yes → IHD, no → IHD or PIRRT', () => {
+    expect(modality({ ...stable, preciseFluidElectrolyteControlNeeded: false, rapidSoluteClearanceNeeded: true }).conclusion).toContain('：IHD review');
+    expect(modality({ ...stable, preciseFluidElectrolyteControlNeeded: false, rapidSoluteClearanceNeeded: false }).conclusion).toContain('IHD 或 PIRRT review');
+    const advice = modalityAdvice({ severity: 'critical' } as DecisionResult, modality({ ...stable, preciseFluidElectrolyteControlNeeded: false, rapidSoluteClearanceNeeded: false }));
+    expect(advice).toContain('可討論 IHD 或 PIRRT');
   });
 });

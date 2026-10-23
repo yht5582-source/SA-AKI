@@ -139,7 +139,9 @@ describe('fluid responsiveness and tolerance are independent', () => {
     expect(byId(results, 'fluid-tolerance').missingData.length).toBeGreaterThan(0);
   });
   it('allows review at the local oxygenation-screen boundary without interpreting hypoxemia as edema', () => {
-    expect(result({ ...clearTolerance, pao2Fio2RatioMmHg: 200 }, 'fluid-tolerance').conclusion).toContain('未見');
+    expect(result({ ...clearTolerance, pao2Fio2RatioMmHg: 201 }, 'fluid-tolerance').conclusion).toContain('未見');
+    // P/F ≤200 is the shared hypoxemia screen (krt.ts, liberation.ts): tolerance becomes unknown, not poor.
+    expect(result({ ...clearTolerance, pao2Fio2RatioMmHg: 200 }, 'fluid-tolerance').conclusion).toContain('未知');
     expect(result({ ...clearTolerance, pao2Fio2RatioMmHg: 150 }, 'fluid-tolerance').conclusion).not.toContain('不佳');
   });
   it('offers only clinician-reviewed monitored challenge when response, tolerance and perfusion need align', () => {
@@ -237,13 +239,20 @@ describe('fluid trajectory and ROSE safety', () => {
     const results = evaluateFluid(snapshot({ ...clearTolerance, respiratorySupport: 'invasive-ventilation' }), prior({ respiratorySupport: 'conventional-oxygen' }));
     expect(byId(results, 'fluid-tolerance').conclusion).toContain('不佳');
   });
+  it('treats a stale prior exactly like no prior: same phase, same trend-gap note', () => {
+    const none = byId(evaluateFluid(snapshot(stable)), 'fluid-rose');
+    const stale = byId(evaluateFluid(snapshot(stable), prior({ timestamp: '2026-08-30T01:00:00Z' })), 'fluid-rose');
+    expect(stale.conclusion).toBe(none.conclusion);
+    expect(none.missingData.join(' ')).toContain('≤6 h');
+    expect(stale.missingData).toEqual(none.missingData);
+  });
   it('does not use stale prior observations to establish a reassuring trajectory', () => {
     const results = evaluateFluid(snapshot({ ...stable, norepinephrineEquivalentMcgKgMin: 0.2 }), prior({ timestamp: '2026-08-30T01:00:00Z', norepinephrineEquivalentMcgKgMin: 0.1 }));
     expect(byId(results, 'fluid-rose').missingData.join(' ')).toContain('6 h');
   });
   it.each([
     ['2026-08-31T20:00:00.000Z', 'resuscitation', false],
-    ['2026-08-31T19:59:59.999Z', 'optimization', true],
+    ['2026-08-31T19:59:59.999Z', 'stabilization', true],
   ] as const)('includes a prior at exactly 6 h but rejects one millisecond older: %s', (timestamp, phase, stale) => {
     const decisions = evaluateFluid(snapshot({ ...stable, norepinephrineEquivalentMcgKgMin: 0.2 }), prior({ timestamp, hoursFromSepsisOnset: -4, norepinephrineEquivalentMcgKgMin: 0.1 }));
     const rose = byId(decisions, 'fluid-rose');

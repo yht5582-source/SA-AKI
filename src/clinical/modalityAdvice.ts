@@ -6,6 +6,7 @@ export function modalityAdvice(indication: DecisionResult | undefined, modality:
   if (!modality || modality.missingData.length > 0) return '資料不足，暫不選定透析模式；請補齊下列評估，危急處置不等待填表。';
   if (modality.evidence.some(item => item.includes('資料衝突')) || modality.conclusion.includes('資料不足或衝突'))
     return '模式資料互相衝突，暫不選定透析模式；請重新核對循環與灌流評估。';
+  if (modality.conclusion.includes('IHD 或 PIRRT review')) return '可討論 IHD 或 PIRRT（循環穩定、無快速清除需求）；須由臨床與腎臟團隊依清除目標、循環及神經風險確認，非機器處方。';
   const mode = (['CRRT', 'IHD', 'PIRRT'] as const).find(value => modality.conclusion.includes(`${value} review`));
   return mode ? `可優先討論 ${mode}；須由臨床與腎臟團隊依清除目標、循環及神經風險確認，非機器處方。` : '暫不選定透析模式；請臨床團隊複核。';
 }

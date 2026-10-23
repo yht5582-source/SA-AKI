@@ -26,7 +26,9 @@ export function selectKrtModality(s: Partial<ClinicalSnapshot>): DecisionResult[
   const option = s.intracranialPressureRisk === true || precision ? 'CRRT review'
     : conflict ? '資料不足或衝突，暫不偏好單一模式'
     : unstable ? 'CRRT review'
-    : stable && s.intracranialPressureRisk === false && s.preciseFluidElectrolyteControlNeeded === false ? 'IHD review'
+    // Stable: rapid clearance need favours IHD; without it, slower PIRRT is an equally reasonable discussion option.
+    : stable && s.intracranialPressureRisk === false && s.preciseFluidElectrolyteControlNeeded === false
+      ? s.rapidSoluteClearanceNeeded === true ? 'IHD review' : 'IHD 或 PIRRT review'
       : s.hemodynamicTolerance === 'intermediate' && knownPerfusion && !perfusionConcern && s.intracranialPressureRisk === false && s.preciseFluidElectrolyteControlNeeded === false ? 'PIRRT review'
         : '資料不足或衝突，暫不偏好單一模式';
   const decisions: DecisionResult[] = [{

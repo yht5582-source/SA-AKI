@@ -17,11 +17,10 @@ function assess(snapshot: ClinicalSnapshot, previous?: ClinicalSnapshot) {
     clinicalSnapshotSchema.parse(previous);
     const hours = (Date.parse(snapshot.timestamp) - Date.parse(previous.timestamp)) / 3_600_000;
     if (snapshot.caseId !== previous.caseId || hours <= 0) throw new Error('Previous snapshot must be earlier and belong to the same case');
-    if (hours > 6) {
-      recent = undefined;
-      trajectoryMissing.push('近期 ≤6 h 可比較趨勢（app-local lookback；舊資料不可作為目前穩定證據）');
-    }
+    if (hours > 6) recent = undefined;
   }
+  // No prior and a stale prior are the same evidence state: current values decide stability, the trend gap is shown.
+  if (!recent) trajectoryMissing.push('近期 ≤6 h 可比較趨勢（app-local lookback；舊資料不可作為目前穩定證據）');
   const pressorsRising = snapshot.vasopressorTrend === 'worsening'
     || (recent?.norepinephrineEquivalentMcgKgMin !== undefined && snapshot.norepinephrineEquivalentMcgKgMin !== undefined
       && snapshot.norepinephrineEquivalentMcgKgMin > recent.norepinephrineEquivalentMcgKgMin);
@@ -38,13 +37,14 @@ function assess(snapshot: ClinicalSnapshot, previous?: ClinicalSnapshot) {
     || (snapshot.capillaryRefillSeconds !== undefined && snapshot.capillaryRefillSeconds > 3)
     || lactateRising || snapshot.skinMottling === true || snapshot.peripheralTemperature === 'cool'
     || snapshot.mentalStatus === 'altered' || snapshot.mentalStatus === 'unresponsive';
-  const perfusionMissing: string[] = [...trajectoryMissing];
+  const perfusionMissing: string[] = [];
   if (snapshot.mapMmHg === undefined) perfusionMissing.push('目前 MAP 與個別灌流目標');
   if (snapshot.lactateMmolL === undefined) perfusionMissing.push('Lactate 與灌流趨勢');
   if (snapshot.capillaryRefillSeconds === undefined) perfusionMissing.push('CRT／周邊灌流');
   if (snapshot.norepinephrineEquivalentMcgKgMin === undefined) perfusionMissing.push('目前 NE-equivalent 劑量');
   if (snapshot.vasopressorTrend === undefined) perfusionMissing.push('升壓劑趨勢');
   const stable = !perfusionConcern && perfusionMissing.length === 0;
+  perfusionMissing.push(...trajectoryMissing);
   const congestion = snapshot.pulmonaryEdema === true || snapshot.lungBLines === 'bilateral-diffuse'
     || (snapshot.vexusGrade !== undefined && snapshot.vexusGrade >= 2);
   const accumulation = (snapshot.cumulativeFluidBalanceMl !== undefined && snapshot.cumulativeFluidBalanceMl > 0)
@@ -53,7 +53,7 @@ function assess(snapshot: ClinicalSnapshot, previous?: ClinicalSnapshot) {
     && snapshot.cumulativeFluidBalanceMl * snapshot.bodyWeightChangeKg < 0;
   const cardiacUncertainty = snapshot.rvFunction === 'impaired' || snapshot.rvDilation === true || snapshot.lvSystolicFunction === 'severely-reduced';
   const oxygenUncertainty = snapshot.pao2Fio2RatioMmHg === undefined
-    ? snapshot.respiratorySupport !== 'room-air' : snapshot.pao2Fio2RatioMmHg < 200;
+    ? snapshot.respiratorySupport !== 'room-air' : snapshot.pao2Fio2RatioMmHg <= 200;
   const tolerance: Axis = congestion || oxygenWorsening ? false : cardiacUncertainty || oxygenUncertainty ? 'unknown'
     : snapshot.pulmonaryEdema === false && snapshot.lungBLines === 'absent' && snapshot.vexusGrade === 0 ? true : 'unknown';
   const measuredResponses = [snapshot.vtiResponsePercent, snapshot.strokeVolumeResponsePercent].filter((value): value is number => value !== undefined);
