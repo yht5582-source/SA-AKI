@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { evaluateHaEligibility } from '../../clinical/ha';
+import { krtTreatmentState } from '../../clinical/diagnosis';
 import { CaseWorkspaceLoader } from '../../components/CaseWorkspaceLoader';
 import { DecisionCard } from '../../components/DecisionCard';
 import type { StoredCase } from '../../data/caseRepository';
@@ -29,7 +30,7 @@ function Dashboard({ stored }: { stored: StoredCase }) {
     {findDemoCase(stored.case.id) && <p className="demo-banner"><strong>虛構示範病例，非真實病人。</strong><Link to={`/demo/${encodeURIComponent(stored.case.id)}`}>回到教學說明</Link></p>}
     <nav className="workflow-actions" aria-label="病例工作區導覽"><Link className="button" to={`/case/${encodeURIComponent(stored.case.id)}/assessment`}>新增時間點</Link><a href="#trajectory">病程趨勢</a><a href="#handoff">床邊摘要</a><Link to={`/case/${encodeURIComponent(stored.case.id)}/ha`}>HA 救援評估</Link></nav>
     {!current ? <p>尚無時間點；請先新增評估。</p> : <><label htmlFor="dashboard-time">評估時間點</label><select id="dashboard-time" value={selectedId} onChange={event => setSelectedId(event.target.value)}>{ordered.map(snapshot => <option key={snapshot.id} value={snapshot.id}>{snapshot.hoursFromSepsisOnset} h · {formatTaipeiDateTime(snapshot.timestamp)}</option>)}</select>
-      <KrtPathway decisions={decisions} caseId={stored.case.id}/>
+      <KrtPathway decisions={decisions} caseId={stored.case.id} state={krtTreatmentState(series, current.timestamp)}/>
       <div className="dashboard-columns"><aside className="dashboard-input"><h2>目前輸入</h2><p>評估時間：{formatTaipeiDateTime(current.timestamp)}</p><dl>{[['目前 SCr', current.creatinineMgDl, 'mg/dL'], ['尿量', current.urineVolumeMl, 'mL'], ['觀察時數', current.urineObservationHours, 'h'], ['MAP', current.mapMmHg, 'mmHg'], ['乳酸', current.lactateMmolL, 'mmol/L']].map(([label, value, unit]) => <div key={label}><dt>{label}</dt><dd>{value ?? '未知'} {unit}</dd></div>)}</dl><Link to={`/case/${encodeURIComponent(stored.case.id)}/assessment/${encodeURIComponent(current.id)}`}>查看完整輸入（唯讀）</Link><p>HA 非常規治療路徑；僅由使用者主動進入救援評估。</p></aside>
         <section className="dashboard-decisions" aria-label="目前判斷"><h2>目前判斷</h2>{haStatus && <p role="status">HA：{haStatus}；非治療資格或自動醫囑。</p>}<div className="decision-filter" role="group" aria-label="判斷篩選"><button aria-pressed={!urgentOnly} onClick={() => setUrgentOnly(false)}>全部 {decisions.length}</button><button aria-pressed={urgentOnly} onClick={() => setUrgentOnly(true)}>只看需處理 {urgent.length}</button></div>{(urgentOnly ? urgent : decisions).map(result => <DecisionCard key={result.id} result={result}/>)}{urgentOnly && urgent.length === 0 && <p>目前沒有標示立即處理或需重評的項目；不代表已排除，仍需臨床核實。</p>}</section>
         <aside className="dashboard-trends"><TrendCharts patient={stored.case} snapshots={series}/></aside></div>

@@ -56,6 +56,7 @@ Version 0.1.0 contains:
 - a live two-stage KRT prompt: confirm whether urgent dialysis needs evaluation, then offer CRRT/IHD/PIRRT for team review only after the relevant mode parameters are supplied; missing measurements link directly to their editable fields;
 - a decision dashboard, 0–72-hour trend views, evidence-linked decision cards, and allowlisted bedside handoff summary;
 - evidence, privacy, governance, changelog, and offline-information pages;
+- diagnosis and treatment mind maps (`/map`) labelling each item with its source or as an app-local convention;
 - six fictional teaching cases (`/demo`) evaluated live by the same engines, and a 20-question self-assessment (`/quiz`: 10 basic, 10 advanced) whose answers are tested against those engines. The quiz keeps only its in-progress attempt in the current tab's `sessionStorage`; it holds no patient data and is not a certification.
 
 Unknown, conflicting, stale, malformed, or unverified inputs fail closed. Local thresholds and time ceilings are conservative operational conventions, not independently validated treatment thresholds. HA is opt-in and not a routine pathway; SSC 2026 conditionally suggests against routine blood purification and polymyxin B hemoperfusion in adult sepsis/septic shock. HA remains a restricted experimental adjunct in research, registry, or approved-protocol contexts.

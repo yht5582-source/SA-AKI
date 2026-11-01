@@ -80,6 +80,12 @@ describe('T4 liberation', () => {
     expect(off.actions[0]).toContain('目前已記錄 trial-off');
     expect(out('demo-t4', 3).text('CRRT 脫離')).toContain('重啟觸發');
   });
+  it('words the dialysis question by treatment status: on CRRT, then stopped', () => {
+    expect(out('demo-t4', 1).text('適應症複核（已在 CRRT 中）')).toContain('這不等於可以停機');
+    expect(out('demo-t4', 1).text('是否透析')).toBe('');
+    expect(out('demo-t4', 2).text('是否重新開始透析')).toContain('已停機');
+    expect(out('demo-t4', 3).text('是否重新開始透析')).toContain('建議立即複核重新開始透析');
+  });
 });
 
 describe('T5 provisional stage and uremic pericarditis', () => {

@@ -4,6 +4,8 @@ Clinical-content, evidence, safety, and application changes are recorded here.
 
 ## Unreleased
 
+- Dialysis wording now follows recorded treatment status: patients already on CRRT get an indication review instead of a start prompt, patients off CRRT are asked about restarting, and contradictory start/stop records are flagged. Engine rules unchanged.
+- Added diagnosis and treatment mind maps (`/map`) with each item labelled by source or as an app-local convention.
 - Added six fictional, clearly labelled teaching cases (`/demo`) that run the real decision engine at each timepoint, and a 20-question quiz (`/quiz`; 10 basic, 10 advanced; practice and exam modes). Every answer is checked against the engine in tests. No clinical rule changed.
 - Simplified the home page (start tiles, plain-language storage note, data tools collapsed) and added a "needs attention" filter to the decision list.
 - Display and accept clinical times in Taiwan time (UTC+8) to seconds without milliseconds; migrate existing tab drafts and preserve precise instants in saved records and JSON interchange.

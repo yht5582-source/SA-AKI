@@ -41,3 +41,12 @@ test('a full 20-question exam reaches a scored review without document overflow'
   await expect(page.getByRole('region', { name: '難度得分' })).toContainText('高階');
   await expectNoHorizontalOverflow(page);
 });
+
+test('both mind maps render without document overflow', async ({ page }) => {
+  await page.goto('map');
+  await expect(page.getByRole('region', { name: 'SA-AKI 診斷心智圖' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.getByRole('button', { name: '治療', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'SA-AKI 治療心智圖' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});

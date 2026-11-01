@@ -4,6 +4,7 @@ import type { ClinicalSnapshot } from '../../clinical/types';
 import { evaluateHaEligibility } from '../../clinical/ha';
 import { evaluateKrtInitiation } from '../../clinical/krt';
 import { dialysisAdvice } from '../../clinical/dialysisAdvice';
+import { krtTreatmentState } from '../../clinical/diagnosis';
 import { selectKrtModality } from '../../clinical/modality';
 import { modalityAdvice } from '../../clinical/modalityAdvice';
 import { formatTaipeiDateTime, formatTaipeiTimestamps, fromTaipeiInput, toTaipeiInput } from '../../clinical/taipeiTime';
@@ -117,7 +118,11 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
   const validation = clinicalSnapshotSchema.safeParse(candidate);
   const krtPreview = krtPreviewSchema.safeParse(candidate);
   const krtIndication = krtPreview.success ? evaluateKrtInitiation(krtPreview.data)[0] : undefined;
-  const krtAdvice = krtIndication && dialysisAdvice(krtIndication);
+  // Saved history alone decides status until this draft has a usable time of its own.
+  const draftTime = typeof candidate.timestamp === 'string' && Number.isFinite(Date.parse(candidate.timestamp)) ? candidate.timestamp : undefined;
+  const statusTime = draftTime ?? stored.snapshots.at(-1)?.timestamp;
+  const krtState = statusTime ? krtTreatmentState(draftTime && !existing ? [...stored.snapshots, candidate as unknown as ClinicalSnapshot] : stored.snapshots, statusTime) : 'none';
+  const krtAdvice = krtIndication && dialysisAdvice(krtIndication, krtState);
   const modePreview = modalityPreviewSchema.safeParse(candidate);
   const modeDecision = modePreview.success ? selectKrtModality(modePreview.data)[0] : undefined;
   const errors: Record<string, string> = {};
@@ -164,14 +169,14 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
     {location.state?.draftCleanupFailed === true && <p role="status" className="field-error">時間點已儲存，但瀏覽器無法清除目前分頁的評估草稿；草稿可能仍保留。請關閉分頁／瀏覽工作階段，並依機構政策確認或清除網站資料。</p>}
     {readonly && <p>已儲存時間點（唯讀）</p>}
     {!review && <Stepper labels={stepLabels} current={draft.step} onChange={selectStep}/>}
-    <section className={`dialysis-advice dialysis-${krtAdvice?.tone ?? 'check'}`} aria-label="是否進行透析"><h2>現在是否建議透析？</h2>
+    <section className={`dialysis-advice dialysis-${krtAdvice?.tone ?? 'check'}`} aria-label="是否進行透析"><h2>{krtAdvice?.heading ?? '現在是否建議透析？'}</h2>
       <p>{krtAdvice?.text ?? '透析評估輸入值無效，無法判定是否需要透析；請修正標示錯誤的資料，危急處置不等待填表。'}</p>
       {krtIndication?.missingData.length ? <details><summary>查看待確認的透析指徵資料（{krtIndication.missingData.length}）</summary><ul>{krtIndication.missingData.map(item => <li key={item}>{item}</li>)}</ul></details> : null}
       <p className="dialysis-advice-note">本頁是未儲存資料的即時篩檢；透析啟動及 CRRT 模式需床邊團隊確認，非自動醫囑。</p>
       {!readonly && draft.step !== 3 && <button type="button" className="button" onClick={() => selectStep(3)}>前往填寫透析指徵</button>}
     </section>
-    <section className="modality-advice" aria-label="透析模式建議"><h2>若需要透析，哪種模式適合？</h2>
-      <p>{modalityAdvice(krtIndication, modeDecision)}</p>
+    <section className="modality-advice" aria-label="透析模式建議"><h2>{krtState === 'on' ? '目前模式' : '若需要透析，哪種模式適合？'}</h2>
+      <p>{modalityAdvice(krtIndication, modeDecision, krtState)}</p>
       {krtIndication?.severity === 'critical' && !modePreview.success && <>
         <p>下列模式參數無效，請修正後重評：</p>
         <ul className="modality-missing">{[...new Set(modePreview.error.issues.map(issue => String(issue.path[0])))].map(key => {

@@ -22,7 +22,7 @@ export function CaseListPage() {
     if (requested) { setEditing(requested); setCreating(false); }
   }).catch(() => { if (active) setError('無法讀取本機資料。'); }); return () => { active = false; }; }, [navigationState?.editCaseId]);
   return <><div className="page-heading"><h2>病例總覽</h2><button className="button primary" onClick={() => { setCreating(true); setEditing(null); setStatus(''); }}>新增匿名病例</button></div>
-    <div className="home-start"><Link to="/demo"><strong>示範病例</strong><span>6 個虛構病例，邊想邊看工具如何判斷</span></Link><Link to="/quiz"><strong>測驗 20 題</strong><span>10 題基礎、10 題高階，附逐項解析</span></Link><Link to="/privacy"><strong>資料只存在本機</strong><span>病例存於此瀏覽器，不會上傳；詳見隱私說明</span></Link></div>
+    <div className="home-start"><Link to="/map"><strong>心智圖</strong><span>診斷與治療的判斷順序，一張圖看完</span></Link><Link to="/demo"><strong>示範病例</strong><span>6 個虛構病例，邊想邊看工具如何判斷</span></Link><Link to="/quiz"><strong>測驗 20 題</strong><span>10 題基礎、10 題高階，附逐項解析</span></Link><Link to="/privacy"><strong>資料只存在本機</strong><span>病例存於此瀏覽器，不會上傳；詳見隱私說明</span></Link></div>
     {creating && <CaseForm onCancel={() => setCreating(false)} onCreated={id => navigate(`/case/${id}/assessment`)}/>}
     {editing && (
       <CaseForm key={editing.id} initial={editing} onCancel={() => navigateAfterEdit ? navigate(navigateAfterEdit, { replace: true }) : setEditing(null)} onCreated={() => {

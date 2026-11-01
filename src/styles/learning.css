@@ -8,7 +8,7 @@
 .learning-crumb a, .learning-next a, .quiz-sources a { color: #075eac; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
 .learning-page h3:focus, .learning-page h2:focus, .quiz-question h2:focus { outline: none; }
 
-.home-start { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 4px 0 20px; }
+.home-start { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 4px 0 20px; }
 .home-start > a, .home-start > button { display: grid; gap: 4px; align-content: start; padding: 16px; min-height: 96px; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; line-height: 1.5; }
 .home-start > a:hover, .home-start > button:hover { border-color: var(--teal); background: #f4fbfb; }
 .home-start strong { font-size: 18px; color: var(--navy); }
@@ -113,6 +113,7 @@
 
 @media (max-width: 1050px) {
   .demo-layout, .quiz-setup, .quiz-breakdown { grid-template-columns: minmax(0, 1fr); }
+  .home-start { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .learning-page { padding-top: 12px; }
 }
 @media (max-width: 720px) {
@@ -122,4 +123,60 @@
   .quiz-quit { flex-basis: 100%; margin-left: 0; }
   .demo-actions .button { flex: 1 1 100%; }
   .learning-page > .button.primary { justify-self: stretch; }
+}
+
+.mm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+.mm-all { min-height: 44px; padding: 6px 14px; font-size: 14px; }
+.mm-tree { --line: #b4c3cd; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; display: flex; align-items: flex-start; min-width: 0; font-size: 14px; line-height: 1.5; }
+.mm-children { list-style: none; margin: 0; padding: 0 0 0 26px; position: relative; display: grid; gap: 6px; min-width: 0; }
+.mm-item { position: relative; display: flex; align-items: flex-start; min-width: 0; }
+/* Each item draws its own elbow, so the trunk stops exactly at the first and last child. */
+.mm-item::before { content: ""; position: absolute; left: -13px; top: 18px; width: 13px; border-top: 2px solid var(--branch, var(--line)); }
+.mm-item::after { content: ""; position: absolute; left: -13px; top: -6px; bottom: 0; border-left: 2px solid var(--branch, var(--line)); }
+.mm-item:first-child::after { top: 18px; }
+.mm-item:last-child::after { bottom: auto; height: 24px; }
+.mm-item:first-child:last-child::after { display: none; }
+.mm-children > .mm-item > .mm-children::before { content: ""; position: absolute; left: 0; top: 18px; width: 13px; border-top: 2px solid var(--branch, var(--line)); }
+.mm-node { min-width: 0; padding: 7px 10px; border-radius: 6px; }
+.mm-root { flex: 0 0 auto; width: 104px; padding: 16px 10px; background: var(--navy); color: white; font-weight: 750; font-size: 16px; text-align: center; }
+.mm-top { flex: 1; padding-left: 26px; gap: 14px; }
+.mm-top::before { content: ""; position: absolute; left: 0; top: 24px; width: 13px; border-top: 2px solid var(--line); }
+.mm-top > .mm-item::before, .mm-top > .mm-item::after { border-color: var(--line); }
+.mm-branch-head { flex: 0 0 168px; width: 168px; display: grid; gap: 4px; }
+.mm-branch-node { width: 100%; display: flex; gap: 6px; align-items: flex-start; min-height: 44px; border: 0; background: var(--branch); color: white; font-weight: 700; text-align: left; }
+.mm-branch-node span { flex: 0 0 auto; }
+.mm-demo { font-size: 13px; color: #075eac; font-weight: 650; text-decoration: underline; padding-left: 4px; min-height: 24px; }
+.mm-branch > .mm-children { flex: 1; }
+.mm-topic { flex: 0 0 104px; width: 104px; background: color-mix(in srgb, var(--branch) 14%, white); font-weight: 700; }
+.mm-topic ~ .mm-children { flex: 1; }
+.mm-leaf { flex: 1; border: 1px solid color-mix(in srgb, var(--branch) 30%, white); background: white; }
+.mm-src { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; background: #e8eef2; color: #3d5361; font-size: 11px; font-weight: 650; white-space: nowrap; }
+.mm-src-local { background: var(--warning-surface); color: var(--warning); }
+.mm-teal { --branch: #0b7377; }
+.mm-blue { --branch: #1d62a8; }
+.mm-amber { --branch: #96590b; }
+.mm-red { --branch: #b52932; }
+.mm-violet { --branch: #66489c; }
+.mm-green { --branch: #287544; }
+.mm-slate { --branch: #51636f; }
+@media (max-width: 860px) {
+  .mm-tree { display: block; padding: 12px; }
+  .mm-root { width: auto; padding: 10px; }
+  .mm-top { padding: 10px 0 0 14px; }
+  .mm-top::before { display: none; }
+  .mm-children { padding-left: 14px; }
+  .mm-children > .mm-item > .mm-children::before { display: none; }
+  .mm-item { display: block; }
+  .mm-item::before { left: -9px; width: 9px; }
+  .mm-item::after { left: -9px; }
+  .mm-branch-head { width: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .mm-branch-node { width: auto; flex: 1 1 60%; }
+  .mm-branch > .mm-children, .mm-topic ~ .mm-children { margin-top: 6px; }
+  .mm-topic { width: auto; }
+  .mm-leaf { width: auto; }
+}
+@media print {
+  .sidebar, .case-toolbar, .mm-toolbar, .mm-demo, .desktop-footer, .learning-next { display: none !important; }
+  .mm-tree { border: 0; padding: 0; }
+  .mm-node, .mm-src { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }

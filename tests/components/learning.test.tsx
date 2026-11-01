@@ -114,3 +114,19 @@ it('shuffles option order between attempts without changing the correct answer',
   }
   expect(orders.size).toBeGreaterThan(1);
 });
+
+it('switches between diagnosis and treatment mind maps and collapses branches', async () => {
+  const user = userEvent.setup(); mount('/map');
+  const diagnosis = screen.getByRole('region', { name: 'SA-AKI 診斷心智圖' });
+  expect(within(diagnosis).getByText(/第 3 期：≥3 倍/)).toBeVisible();
+  await user.click(within(diagnosis).getByRole('button', { name: /2\. KDIGO 分期/ }));
+  expect(screen.queryByText(/第 3 期：≥3 倍/)).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '治療' }));
+  const treatment = screen.getByRole('region', { name: 'SA-AKI 治療心智圖' });
+  expect(within(treatment).getByText(/難治肺水腫/)).toBeVisible();
+  expect(within(treatment).getAllByText('本工具慣例').length).toBeGreaterThan(5);
+  await user.click(screen.getByRole('button', { name: '全部收合' }));
+  expect(screen.queryByText(/難治肺水腫/)).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '全部展開' }));
+  expect(screen.getByText(/難治肺水腫/)).toBeVisible();
+});

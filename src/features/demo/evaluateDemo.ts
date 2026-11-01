@@ -1,3 +1,4 @@
+import { krtTreatmentState } from '../../clinical/diagnosis';
 import { dialysisAdvice } from '../../clinical/dialysisAdvice';
 import { modalityAdvice } from '../../clinical/modalityAdvice';
 import type { DecisionResult } from '../../clinical/types';
@@ -18,14 +19,13 @@ export function evaluateDemoTimepoint(demo: DemoCase, index: number): { decision
   const decisions = evaluateDashboard(demo.patient, known, current.id);
   const conclusion = (id: string) => decisions.find(result => result.id === id)?.conclusion;
   const indication = decisions.find(result => result.id === 'krt-emergency-indications')!;
-  const advice = dialysisAdvice(indication);
-  const onCrrt = current.crrtStartedTimestamp !== undefined && current.crrtStoppedTimestamp === undefined;
+  const state = krtTreatmentState(known, current.timestamp);
+  const advice = dialysisAdvice(indication, state);
   const outputs: DemoOutput[] = [
     { label: 'AKI 分期', text: conclusion('aki-staging')! },
-    // The engine screens every observation for indications; once on CRRT that reads as a persistence review, not a start decision.
-    ...(onCrrt
-      ? [{ label: '適應症複核（已在 CRRT 中）', text: indication.severity === 'critical' ? '適應症仍在，持續治療並由團隊複核。' : indication.conclusion.startsWith('urgent confirmation') ? '仍有危險訊號，尚不能視為適應症已解決；由團隊確認治療反應。' : '目前未見持續的危急適應症；是否脫離另依下方脫離評估。' }]
-      : [{ label: '是否透析', text: advice.text, tone: advice.tone }, { label: '透析模式', text: modalityAdvice(indication, decisions.find(result => result.id === 'krt-modality-selection')) }]),
+    ...(state === 'on'
+      ? [{ label: '適應症複核（已在 CRRT 中）', text: advice.text, tone: advice.tone }]
+      : [{ label: state === 'off' ? '是否重新開始透析' : '是否透析', text: advice.text, tone: advice.tone }, { label: '透析模式', text: modalityAdvice(indication, decisions.find(result => result.id === 'krt-modality-selection'), state) }]),
     { label: '輸液計畫', text: conclusion('fluid-plan')! },
     { label: 'ROSE 階段', text: conclusion('fluid-rose')! },
     { label: '淨脫水', text: conclusion('fluid-ufnet')! },

@@ -193,6 +193,14 @@ function reconcileAcuteRrtEpisode(snapshots: ClinicalSnapshot[], observationTime
   return { historicalStage3, currentRrt, uncertain, evidence, missingData };
 }
 
+export type KrtTreatmentState = 'none' | 'on' | 'off' | 'uncertain';
+
+/** Treatment status at an observation time, from the same reconciliation staging uses. Later blanks are not a stop. */
+export function krtTreatmentState(snapshots: ClinicalSnapshot[], observationTimestamp: string): KrtTreatmentState {
+  const episode = reconcileAcuteRrtEpisode(snapshots, observationTimestamp);
+  return episode.uncertain ? 'uncertain' : episode.currentRrt ? 'on' : episode.historicalStage3 ? 'off' : 'none';
+}
+
 /** Current staging plus first documented AKI timing; never equates detection with exact onset. */
 export function evaluateDiagnosis(caseData: PatientCase, snapshots: ClinicalSnapshot[], currentSnapshotId?: string): DecisionResult[] {
   caseExportSchema.parse({ schemaVersion: 1, case: caseData, snapshots });

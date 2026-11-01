@@ -1,7 +1,9 @@
+import type { KrtTreatmentState } from './diagnosis';
 import type { DecisionResult } from './types';
 
 /** A mode preference is shown only after a confirmed indication and a complete mode screen. */
-export function modalityAdvice(indication: DecisionResult | undefined, modality: DecisionResult | undefined): string {
+export function modalityAdvice(indication: DecisionResult | undefined, modality: DecisionResult | undefined, state: KrtTreatmentState = 'none'): string {
+  if (state === 'on') return '已在 CRRT；僅在循環、清除目標或實際交付改變時，才由團隊重新討論模式。';
   if (!indication || indication.severity !== 'critical') return '尚不選定 KRT 模式；先確認是否需要透析。';
   if (!modality || modality.missingData.length > 0) return '資料不足，暫不選定透析模式；請補齊下列評估，危急處置不等待填表。';
   if (modality.evidence.some(item => item.includes('資料衝突')) || modality.conclusion.includes('資料不足或衝突'))

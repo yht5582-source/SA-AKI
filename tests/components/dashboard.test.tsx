@@ -212,3 +212,35 @@ it('renders prescription arithmetic and fails closed when measured perfusion con
   expect(card).toHaveTextContent('立即重新評估');
   expect(card).toHaveTextContent('非機器醫囑');
 });
+
+describe('dialysis wording follows the recorded treatment status', () => {
+  const start = new Date(Date.UTC(2026, 8, 21, 2)).toISOString();
+  const urgent = { potassiumMmolL: 6.5, refractoryHyperkalemia: true, arterialPh: 7.3, pulmonaryEdema: false, uremicManifestations: [], lifeThreateningElectrolyteDisturbance: false, dialyzableToxin: false, requiresControlledSodiumCorrection: false };
+  const open = async (snapshots: ClinicalSnapshot[]) => {
+    await caseRepository.importCase({ schemaVersion: 1, case: patient, snapshots });
+    mount();
+    return within(await screen.findByRole('region', { name: 'AKI 與 KRT 決策' }));
+  };
+  it('never tells a patient already on CRRT to start, including when a later observation leaves the start blank', async () => {
+    const pathway = await open([observation(6, { crrtMode: 'CVVHDF', crrtStartedTimestamp: start, ...urgent }), observation(12, urgent)]);
+    expect(pathway.getByRole('heading', { name: '目前 CRRT 適應症複核' })).toBeVisible();
+    expect(pathway.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('已在 CRRT，適應症仍在');
+    expect(pathway.queryByText(/建議立即評估啟動透析/)).not.toBeInTheDocument();
+    expect(pathway.queryByText(/立即評估 KRT：/)).not.toBeInTheDocument();
+    expect(pathway.getByRole('heading', { name: '3. 目前模式' })).toBeVisible();
+  });
+  it('does not imply a stop is safe when no indication remains on CRRT', async () => {
+    const pathway = await open([observation(6, { crrtStartedTimestamp: start, potassiumMmolL: 4.5, arterialPh: 7.38, pulmonaryEdema: false, uremicManifestations: [], lifeThreateningElectrolyteDisturbance: false, dialyzableToxin: false, requiresControlledSodiumCorrection: false })]);
+    expect(pathway.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('這不等於可以停機');
+  });
+  it('asks about restarting after a recorded stop', async () => {
+    const stop = new Date(Date.UTC(2026, 8, 21, 5)).toISOString();
+    const pathway = await open([observation(6, { crrtStartedTimestamp: start, crrtStoppedTimestamp: stop, ...urgent })]);
+    expect(pathway.getByRole('heading', { name: '是否需要重新開始透析？' })).toBeVisible();
+    expect(pathway.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('建議立即複核重新開始透析');
+  });
+  it('flags contradictory treatment records instead of assuming either status', async () => {
+    const pathway = await open([observation(6, { crrtStoppedTimestamp: start, ...urgent })]);
+    expect(pathway.getByRole('region', { name: '是否進行透析' })).toHaveTextContent('紀錄有矛盾');
+  });
+});
