@@ -5,6 +5,7 @@ import { evaluateHaEligibility } from '../../clinical/ha';
 import { evaluateKrtInitiation } from '../../clinical/krt';
 import { dialysisAdvice } from '../../clinical/dialysisAdvice';
 import { krtTreatmentState } from '../../clinical/diagnosis';
+import { localizeClinicalText } from '../../clinical/localize';
 import { selectKrtModality } from '../../clinical/modality';
 import { modalityAdvice } from '../../clinical/modalityAdvice';
 import { formatTaipeiDateTime, formatTaipeiTimestamps, fromTaipeiInput, toTaipeiInput } from '../../clinical/taipeiTime';
@@ -204,7 +205,7 @@ function WizardForm({ stored, snapshotId }: { stored: StoredCase; snapshotId?: s
             <h3>已接受 HA 暴露的紀錄（非啟動指令）</h3><p>此表單可記錄一個療程；開始時間用於跨時點核對。停止須明確記錄，後续空白不代表已停機。重複／多重療程需人工核對；完整多療程資料可由已驗證 JSON 匯入，唯讀檢視保留全部原始紀錄。下列範例僅示範格式，非給藥或裝置建議。</p>
             <AssessmentStep fields={haExposureFields} values={draft.values} errors={errors} onChange={(key, value) => update({ ...draft.values, [key]: value })} disabled={readonly}/>
             <p>{retainedIncompleteHa ? 'HA 尚未完成：此時間點僅保存觀察，未記錄審查完成。' : haEligible ? '可送多專科審查' : 'HA 尚未完成：必要資料或安全門檻未通過'}</p>
-            {visibleHaResults.map(result => <details key={result.id}><summary>{result.conclusion}</summary><ul>{[...result.missingData, ...result.evidence].map((item, i) => <li key={i}>{item}</li>)}</ul></details>)}
+            {visibleHaResults.map(result => <details key={result.id}><summary>{localizeClinicalText(result.conclusion)}</summary><ul>{[...result.missingData, ...result.evidence].map((item, i) => <li key={i}>{localizeClinicalText(item)}</li>)}</ul></details>)}
             <button className="button" disabled={!haEligible || readonly} onClick={() => { setHaReviewed(true); setSaveIncompleteHa(false); }}>完成 HA 多專科審查</button>
             {haReviewed && <p>多專科審查已確認；非自動醫囑。</p>}
           </>}

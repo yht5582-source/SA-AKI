@@ -4,6 +4,7 @@ Clinical-content, evidence, safety, and application changes are recorded here.
 
 ## Unreleased
 
+- Decision cards, the KRT pathway, HA workspace, demo pages and the bedside handoff now display engine output in Traditional Chinese through a display-only layer (`src/clinical/localize.ts`). Engine strings, exports and rules are unchanged; tests check that no clinical number changes in translation.
 - Dialysis wording now follows recorded treatment status: patients already on CRRT get an indication review instead of a start prompt, patients off CRRT are asked about restarting, and contradictory start/stop records are flagged. Engine rules unchanged.
 - Added diagnosis and treatment mind maps (`/map`) with each item labelled by source or as an app-local convention.
 - Added six fictional, clearly labelled teaching cases (`/demo`) that run the real decision engine at each timepoint, and a 20-question quiz (`/quiz`; 10 basic, 10 advanced; practice and exam modes). Every answer is checked against the engine in tests. No clinical rule changed.

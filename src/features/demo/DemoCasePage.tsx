@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { zh } from '../../clinical/display';
+import { localizeClinicalText } from '../../clinical/localize';
 import type { ClinicalSnapshot } from '../../clinical/types';
 import { caseRepository } from '../../data/caseRepository';
 import { clearAssessmentDrafts } from '../assessment/draft';
@@ -93,7 +94,7 @@ function DemoWalkthrough({ demo }: { demo: DemoCase }) {
         {!shown && <button className="button primary" onClick={() => setRevealed(current => new Set(current).add(index))}>看工具的判斷</button>}
         {shown && <div className="demo-reveal">
           <h3>工具的判斷</h3>
-          <dl className="demo-outputs">{outputs.map(output => <div key={output.label} className={output.tone ? `tone-${output.tone}` : undefined}><dt>{output.label}</dt><dd>{output.text}</dd></div>)}</dl>
+          <dl className="demo-outputs">{outputs.map(output => <div key={output.label} className={output.tone ? `tone-${output.tone}` : undefined}><dt>{output.label}</dt><dd>{localizeClinicalText(output.text)}</dd></div>)}</dl>
           <div className="demo-teaching"><h3>為什麼</h3><p>{point.teaching}</p></div>
           {index < demo.timepoints.length - 1
             ? <button className="button primary" onClick={() => go(index + 1)}>下一個時間點：{demo.timepoints[index + 1].label}</button>

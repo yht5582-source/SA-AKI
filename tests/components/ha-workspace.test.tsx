@@ -56,7 +56,7 @@ it('shows the engine safety veto in its gate and does not preserve confirmed rev
   assessment.safety!.uncontrolledBleeding = true;
   await seed({ hemoadsorptionAssessment: assessment }); mount();
   const safety = await screen.findByRole('region', { name: '安全門檻' });
-  expect(safety).toHaveTextContent('Safety veto assessment: uncontrolledBleeding');
+  expect(safety).toHaveTextContent('安全否決評估：未控制的出血');
   expect(screen.getByRole('status')).toHaveTextContent('不符合審查資格');
   expect(screen.queryByText('可送多專科審查')).not.toBeInTheDocument();
 });
@@ -65,9 +65,9 @@ it('integrates documented-exposure response safety and includes HA in the handof
   const fixture = haResponseInput({ norepinephrineEquivalentMcgKgMin: 0.5 });
   await caseRepository.importCase({ schemaVersion: 1, case: { id: 'ha-case', anonymousCode: 'A-HA' }, snapshots: [fixture.baseline.previousSnapshot, fixture.baseline.snapshot, fixture.snapshot] });
   const user = userEvent.setup(); mount();
-  expect(await screen.findByRole('article', { name: 'stop and reassess with the bedside multidisciplinary team' })).toHaveAttribute('data-severity', 'critical');
+  expect(await screen.findByRole('article', { name: '停止並與床邊多專科團隊重評' })).toHaveAttribute('data-severity', 'critical');
   await user.click(screen.getByRole('link', { name: '決策首頁' }));
   const textarea = await screen.findByLabelText('交班摘要') as HTMLTextAreaElement;
-  expect(textarea.value).toContain('HA 狀態'); expect(textarea.value).toContain('ha-response-review');
+  expect(textarea.value).toContain('HA 狀態'); expect(textarea.value).toContain('HA 反應');
   expect(textarea.value).not.toContain('vancomycin');
 });

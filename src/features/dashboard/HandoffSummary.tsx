@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react';
-import type { ClinicalSnapshot, DecisionResult } from '../../clinical/types';
+import type { ClinicalSnapshot, DecisionResult, SourceStatus } from '../../clinical/types';
 import { evidenceSources } from '../../clinical/sources';
+import { localizeClinicalText, ruleLabel } from '../../clinical/localize';
 import { formatTaipeiDateTime, formatTaipeiTimestamps } from '../../clinical/taipeiTime';
+
+const sourceStatusLabels: Record<SourceStatus, string> = { guideline: '指引', draft: '草案', consensus: '共識', trial: '試驗', position: '專家立場', local: '本機規則', unverified: '未核實', observational: '觀察研究' };
 
 /** Allowlisted generated conclusions only. Never serialize patient data, free text, actions or medication evidence. */
 function buildHandoff(snapshot: ClinicalSnapshot, decisions: DecisionResult[], haStatus?: string): string {
-  const conclusion = (id: string) => decisions.find(result => result.id === id)?.conclusion ?? '資料不足，待評估';
+  const conclusion = (id: string) => localizeClinicalText(decisions.find(result => result.id === id)?.conclusion ?? '資料不足，待評估');
   const times = decisions.flatMap(result => result.reassessWithinHours === undefined ? [] : [result.reassessWithinHours]);
   const next = times.length ? Math.min(...times) : undefined;
   const sources = [...new Set(decisions.flatMap(result => result.sourceIds))];
@@ -16,10 +19,10 @@ function buildHandoff(snapshot: ClinicalSnapshot, decisions: DecisionResult[], h
     `液體階段：${conclusion('fluid-rose')}`,
     `KRT 狀態：${conclusion('krt-emergency-indications')}；${conclusion('crrt-liberation-review')}`,
     `模式：${conclusion('krt-modality-selection')}；已記錄模式 ${snapshot.crrtMode ?? '未知'}。`,
-    `安全問題：${decisions.filter(result => result.severity === 'critical' || result.severity === 'warning').map(result => `[${result.id}] ${result.conclusion}`).join('；') || '尚未辨識；不代表已排除。'}`,
+    `安全問題：${decisions.filter(result => result.severity === 'critical' || result.severity === 'warning').map(result => `［${ruleLabel(result.id)}］${localizeClinicalText(result.conclusion)}`).join('；') || '尚未辨識；不代表已排除。'}`,
     ...(haStatus ? [`HA 狀態：${haStatus}；非常規路徑，非治療資格。`] : []),
     `下次重評：${next === undefined ? '待臨床確認' : next === 0 ? '立即' : `至遲 ${next} 小時內（自上述評估時間起算）`}；惡化時立即重評，不等待排程。`,
-    `證據不確定性：臨床內容尚待專業審查；缺失資料共 ${new Set(decisions.flatMap(result => result.missingData)).size} 項，未知不代表正常；本機操作性規則非經驗證治療閾值。來源：${sources.map(id => `${id} (${evidenceSources[id]?.status ?? 'unverified'})`).join(', ')}。來源核實不等同病人適用性或治療授權。`,
+    `證據不確定性：臨床內容尚待專業審查；缺失資料共 ${new Set(decisions.flatMap(result => result.missingData)).size} 項，未知不代表正常；本機操作性規則非經驗證治療閾值。來源：${sources.map(id => `${id}（${sourceStatusLabels[evidenceSources[id]?.status ?? 'unverified']}）`).join(', ')}。來源核實不等同病人適用性或治療授權。`,
   ].map(formatTaipeiTimestamps).join('\n\n');
 }
 export function HandoffSummary({ snapshot, decisions, haStatus }: { snapshot: ClinicalSnapshot; decisions: DecisionResult[]; haStatus?: string }) {

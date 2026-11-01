@@ -23,7 +23,7 @@ it('keeps duplicate-time cases usable with a strictly earlier fluid comparator a
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   expect(screen.getByLabelText('評估時間點')).toHaveValue('z-current');
   expect(screen.getByRole('article', { name: /同一時間點有多筆觀察/ })).toBeVisible();
-  expect(screen.getByRole('article', { name: /urgent KRT evaluation/ })).toBeVisible();
+  expect(screen.getByRole('article', { name: /立即評估 KRT/ })).toBeVisible();
   expect(screen.getAllByText(/3.5 → 6 mmol\/L/).length).toBeGreaterThan(0);
   const table = screen.getByRole('table', { name: 'SCr 數據' });
   const duplicate = within(table).getByRole('row', { name: /6 h.*多筆觀察/ });
@@ -99,7 +99,7 @@ it('uses the unique assessed compatible baseline among same-time unassessed obse
     expect(response?.evidence).toContain('Rising NE-equivalent');
   }
   await seed(snapshots); mount('/case/ha-case/ha');
-  expect(await screen.findByRole('article', { name: 'stop and reassess with the bedside multidisciplinary team' })).toHaveAttribute('data-severity', 'critical');
+  expect(await screen.findByRole('article', { name: '停止並與床邊多專科團隊重評' })).toHaveAttribute('data-severity', 'critical');
 });
 
 it('keeps a documented 12 h HA exposure visible when the 14 h worsening observation omits treatment documentation', async () => {

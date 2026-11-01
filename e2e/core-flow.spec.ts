@@ -8,7 +8,7 @@ test('anonymous creation, two timepoints, KDIGO/SA-AKI, fluid/KRT and identifier
   await expect(page.getByRole('checkbox', { name: '主動啟用 HA 救援評估' })).not.toBeChecked();
   await saveObservation(page);
   await page.getByRole('link', { name: '決策首頁', exact: true }).click();
-  await expect(page.getByRole('article', { name: /KDIGO.*stage 2/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /KDIGO.*第 2 期/ })).toBeVisible();
   await page.getByRole('link', { name: '新增時間點', exact: true }).click();
   await fillObservation(page, 12);
   await saveObservation(page);
@@ -16,18 +16,18 @@ test('anonymous creation, two timepoints, KDIGO/SA-AKI, fluid/KRT and identifier
 
   const times = page.getByLabel('評估時間點', { exact: true });
   await expect(times.getByRole('option')).toHaveCount(2);
-  await expect(page.getByRole('article', { name: /KDIGO.*stage 3/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /KDIGO.*第 3 期/ })).toBeVisible();
   await expect(page.getByRole('article', { name: /SA-AKI.*early/ })).toBeVisible();
   const fluid = page.getByRole('article', { name: /^不可直接追加輸液/ });
   await expect(fluid).toContainText('缺失資料');
   await expect(fluid).toContainText('停止');
-  const krt = page.getByRole('article', { name: /^urgent KRT evaluation/ });
+  const krt = page.getByRole('article', { name: /^立即評估 KRT/ });
   await expect(krt).toContainText('有相符高血鉀且已確認對適當治療難治');
   await expect(page.getByRole('article', { name: /HA.*門檻|血液淨化非常規/ })).toHaveCount(0);
 
   await page.getByRole('link', { name: '床邊摘要', exact: true }).click();
   const handoff = await page.getByLabel('交班摘要', { exact: true }).inputValue();
-  expect(handoff).toContain('stage 3');
+  expect(handoff).toContain('第 3 期');
   expect(handoff).toContain('early');
   expect(handoff).toContain('非自動醫囑');
   expect(handoff).not.toContain(created.code);

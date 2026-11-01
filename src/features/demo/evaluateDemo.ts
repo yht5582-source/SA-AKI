@@ -35,7 +35,7 @@ export function evaluateDemoTimepoint(demo: DemoCase, index: number): { decision
     const dose = decisions.find(result => result.id === 'crrt-delivered-dose');
     if (current.prescriptionAssessment && prescription && dose) outputs.push(
       { label: '處方試算', text: prescription.evidence.slice(0, 4).join('；') },
-      { label: '交付劑量', text: dose.evidence[0].replace('Target', '目標').replace('prescribed', '處方').replace('configured estimate', '模型估算').replace('observed', '實測') },
+      { label: '交付劑量', text: dose.evidence[0] },
     );
     const liberation = conclusion('crrt-liberation-review');
     if (liberation) outputs.push({ label: 'CRRT 脫離', text: LIBERATION_LABELS[liberation.split('：')[0]] ?? liberation });

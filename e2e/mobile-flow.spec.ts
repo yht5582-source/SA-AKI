@@ -38,7 +38,7 @@ test('390×844 eight-step wizard saves a real timepoint without document overflo
   await saveObservation(page);
   await expectNoHorizontalOverflow(page);
   await page.getByRole('link', { name: '決策首頁', exact: true }).click();
-  await expect(page.getByRole('article', { name: /KDIGO.*stage 2/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /KDIGO.*第 2 期/ })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await page.reload();
   await expect(page.getByText(`匿名病例 ${created.code}`, { exact: true })).toBeVisible();
@@ -55,7 +55,7 @@ test('390×844 KRT summary explains conditional CRRT and sends missing findings 
   const pathway = page.getByRole('region', { name: 'AKI 與 KRT 決策' });
   await expect(pathway.getByRole('region', { name: '是否進行透析' })).toContainText('建議立即評估啟動透析');
   await expect(pathway).toContainText('立即評估 KRT');
-  await expect(pathway).toContainText('CRRT review');
+  await expect(pathway).toContainText('討論 CRRT');
   await pathway.getByText('CRRT 機制怎麼選？').click();
   await expect(pathway).toContainText('SCUF：以液體移除為主，不提供充分溶質清除');
   await expectNoHorizontalOverflow(page);

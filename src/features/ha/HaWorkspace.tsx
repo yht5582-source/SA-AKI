@@ -8,6 +8,7 @@ import { HaWarning } from './HaWarning';
 import { haStatusLabel } from './haPresentation';
 import { orderSnapshots, strictlyEarlierSnapshot } from '../dashboard/snapshotContext';
 import { formatTaipeiDateTime, formatTaipeiTimestamps } from '../../clinical/taipeiTime';
+import { localizeClinicalText } from '../../clinical/localize';
 
 export function HaWorkspace() { return <CaseWorkspaceLoader>{stored => <HaReview stored={stored}/>}</CaseWorkspaceLoader>; }
 function HaReview({ stored }: { stored: StoredCase }) {
@@ -28,7 +29,7 @@ function HaReview({ stored }: { stored: StoredCase }) {
       {gate === 'target' && <><p>裝置：{assessment?.requestedDevice ?? '尚未選擇'}；目標：{assessment?.targetAdsorbate ?? '尚未記錄'}。</p><p>{assessment?.requestedDevice === 'polymyxin-B' ? 'polymyxin-B：EAA 與內毒素表型／Gram-negative 評估；IL-6 不可替代 EAA。' : assessment?.requestedDevice === 'oXiris' ? 'oXiris：依目標評估 EAA／連續 IL-6；必須另行確認獨立 CRRT 適應症。' : 'CytoSorb／HA330／HA380：連續定量 IL-6 與已確認高發炎表型；EAA 不可替代 IL-6。其他裝置無預設通過路徑。'}</p><p>EAA：{snapshot?.endotoxinActivityAssay ?? '未知'}（無單位）；IL-6：{snapshot?.il6PgMl ?? '未知'} pg/mL。</p></>}
       {gate === 'safety' && <p>血小板、凝血、白蛋白、器官功能、電解質、通路、抗凝、管路及藥物移除計畫；出血、不可逆性與照護目標否決需排除。</p>}
       {gate === 'governance' && <p>重症、腎臟、感染團隊及藥師；治理場域、同意、監測、重評與停止計畫。不得以裝置可用性通過。</p>}
-      <ul>{[...gateResult?.missingData ?? [], ...gateResult?.evidence ?? []].filter(item => item.startsWith(gate + ':')).map(item => <li key={item}>{formatTaipeiTimestamps(item)}</li>)}</ul>
+      <ul>{[...gateResult?.missingData ?? [], ...gateResult?.evidence ?? []].filter(item => item.startsWith(gate + ':')).map(item => <li key={item}>{formatTaipeiTimestamps(localizeClinicalText(item))}</li>)}</ul>
     </section>)}</div>
     <h2>目前判斷</h2>{results.map(result => <DecisionCard key={result.id} result={result}/>)}
   </section>;

@@ -303,7 +303,7 @@ it('fails closed in the rendered HA wizard when the latest prior instant has con
 
   expect(await screen.findByText('HA 尚未完成：必要資料或安全門檻未通過')).toBeVisible();
   expect(screen.getByRole('button', { name: '完成 HA 多專科審查' })).toBeDisabled();
-  expect(screen.getByText(/Chronological same-case baseline/)).toBeInTheDocument();
+  expect(screen.getByText(/同一病例、時序正確的基準/)).toBeInTheDocument();
 });
 
 it.each(['2026-09-21T06:00:30Z', '2026-09-21T06:00:00.375Z'])(
@@ -322,7 +322,7 @@ it.each(['2026-09-21T06:00:30Z', '2026-09-21T06:00:00.375Z'])(
     await user.click(screen.getByRole('button', { name: '返回編輯' }));
     await user.click(step('選配 HA'));
     expect(screen.getByText('可送多專科審查')).toBeVisible();
-    expect(screen.queryByText(/Chronological same-case baseline/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/同一病例、時序正確的基準/)).not.toBeInTheDocument();
     expect((await caseRepository.exportCase('precise-case')).snapshots).toEqual([previous, snapshot]);
   },
 );

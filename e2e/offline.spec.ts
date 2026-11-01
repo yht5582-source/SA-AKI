@@ -19,7 +19,7 @@ test('first install precaches root, existing case and unvisited evidence routes 
   await expect(page.getByRole('link', { name: `開啟 ${created.code}`, exact: true })).toBeVisible();
   await page.goto(caseURL);
   await page.reload();
-  await expect(page.getByRole('article', { name: /KDIGO.*stage 2/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /KDIGO.*第 2 期/ })).toBeVisible();
   // Deliberately not visited online: this needs the precached app-shell fallback.
   await page.goto('./evidence');
   await page.reload();

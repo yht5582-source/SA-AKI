@@ -31,7 +31,7 @@ it('shows the AKI to KRT decision first without suggesting a mode from severe AK
   mount();
   const pathway = await screen.findByRole('region', { name: 'AKI 與 KRT 決策' });
   expect(within(pathway).getByRole('region', { name: '是否進行透析' })).toHaveTextContent('目前不建議開始透析');
-  expect(within(pathway).getByText(/KDIGO stage 3/)).toBeVisible();
+  expect(within(pathway).getByText(/KDIGO 第 3 期/)).toBeVisible();
   expect(within(pathway).getByText(/目前無已確立 KRT 適應症/)).toBeVisible();
   expect(within(pathway).getByText(/尚不選定 KRT 模式/)).toBeVisible();
   expect(within(pathway).queryByText(/建議使用 CVVHDF|啟動 CRRT/)).not.toBeInTheDocument();
@@ -45,7 +45,7 @@ it('shows conditional CRRT review and mechanism choices only after a confirmed K
   expect(within(pathway).getByRole('region', { name: '是否進行透析' })).toHaveTextContent('建議立即評估啟動透析');
   expect(within(pathway).getByText(/立即評估 KRT/)).toBeVisible();
   expect(within(pathway).getByText(/有相符高血鉀.*難治/)).toBeVisible();
-  expect(within(pathway).getByText(/CRRT review/)).toBeVisible();
+  expect(within(pathway).getByText(/討論 CRRT/)).toBeVisible();
   expect(within(pathway).getByText(/資料不足，暫不選定透析模式/)).toBeVisible();
   await user.click(within(pathway).getByText('CRRT 機制怎麼選？'));
   expect(within(pathway).getByText(/^CVVHD：.*擴散/)).toBeVisible();
@@ -135,7 +135,7 @@ it('opens the dashboard from case overview and never uses later observations in 
   mount('/SA-AKI/'); await user.click(await screen.findByRole('link', { name: '決策首頁 A-dashboard' }));
   await screen.findByRole('heading', { name: '決策首頁' });
   await user.selectOptions(screen.getByLabelText('評估時間點'), 's0');
-  expect(screen.queryByRole('heading', { name: /urgent KRT evaluation/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: /立即評估 KRT/ })).not.toBeInTheDocument();
   expect(within(screen.getByRole('table', { name: 'SCr 數據' })).getByRole('row', { name: /6 h.*缺值/ })).toBeVisible();
   expect((screen.getByLabelText('交班摘要') as HTMLTextAreaElement).value).toContain('2026-09-21 08:00:00（台灣時間）');
 });
@@ -150,7 +150,7 @@ it('keeps a selected same-time observation aligned across dashboard input, diagn
 
   await user.selectOptions(screen.getByLabelText('評估時間點'), severe.id);
   expect(screen.getByText('目前 SCr').parentElement).toHaveTextContent('3 mg/dL');
-  expect(screen.getByRole('article', { name: /KDIGO stage 3/ })).toBeVisible();
+  expect(screen.getByRole('article', { name: /KDIGO 第 3 期/ })).toBeVisible();
   expect(screen.getAllByRole('article').find(card => card.getAttribute('data-rule-id') === 'sepsis-assessment')).toHaveTextContent('目前 SOFA：12');
 
   await user.selectOptions(screen.getByLabelText('評估時間點'), normal.id);
@@ -204,11 +204,11 @@ it('renders prescription arithmetic and fails closed when measured perfusion con
   expect(card).toHaveTextContent('目前設定 effluent：2000 mL/h');
   expect(card).toHaveTextContent('Filtration fraction：11.9%');
   expect(card).toHaveTextContent('安全調整後 UFNET：0 mL/h');
-  expect(card).toHaveTextContent('處方安全 checklist：incomplete');
+  expect(card).toHaveTextContent('處方安全 checklist：未完成');
   expect(card).toHaveTextContent('PrisMax');
   expect(card).toHaveTextContent('150 mL/min');
   expect(card).toHaveTextContent('量測與人工標記衝突');
-  expect(card).toHaveTextContent('NE-equivalent 0.1 → 0.4');
+  expect(card).toHaveTextContent('NE 當量 0.1 → 0.4');
   expect(card).toHaveTextContent('立即重新評估');
   expect(card).toHaveTextContent('非機器醫囑');
 });

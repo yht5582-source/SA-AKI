@@ -4,11 +4,12 @@ import { dialysisAdvice } from '../../clinical/dialysisAdvice';
 import { modalityAdvice } from '../../clinical/modalityAdvice';
 import { fieldsForMissingItem } from '../assessment/modalityFields';
 import type { KrtTreatmentState } from '../../clinical/diagnosis';
+import { localizeClinicalText } from '../../clinical/localize';
 
 function MissingItems({ items, caseId }: { items: string[]; caseId: string }) {
   return <ul className="krt-missing">{items.map((item, index) => {
     const targets = fieldsForMissingItem(item);
-    return <li key={`${item}-${index}`}><span>{item}</span>{targets.map(({ key, label }) => <Link key={key} to={`/case/${encodeURIComponent(caseId)}/assessment?field=${encodeURIComponent(key)}`} aria-label={`前往填寫${item.includes('血鉀') ? '血鉀' : label}`}>前往填寫{targets.length > 1 ? ` ${label}` : ''}</Link>)}</li>;
+    return <li key={`${item}-${index}`}><span>{localizeClinicalText(item)}</span>{targets.map(({ key, label }) => <Link key={key} to={`/case/${encodeURIComponent(caseId)}/assessment?field=${encodeURIComponent(key)}`} aria-label={`前往填寫${item.includes('血鉀') ? '血鉀' : label}`}>前往填寫{targets.length > 1 ? ` ${label}` : ''}</Link>)}</li>;
   })}</ul>;
 }
 
@@ -26,12 +27,12 @@ export function KrtPathway({ decisions, caseId, state = 'none' }: { decisions: D
     <h2>AKI → KRT → 模式</h2>
     <section className={`dialysis-advice dialysis-${advice.tone}`} aria-label="是否進行透析"><h3>{advice.heading}</h3><p>{advice.text}</p></section>
     <div className="krt-pathway-stages">
-      <section><h3>1. AKI 評估</h3><p>{aki.conclusion}</p><small>AKI 分期與單次 SCr、BUN、少尿、SOFA 或升壓劑劑量均不構成獨立 KRT 適應症。</small></section>
+      <section><h3>1. AKI 評估</h3><p>{localizeClinicalText(aki.conclusion)}</p><small>AKI 分期與單次 SCr、BUN、少尿、SOFA 或升壓劑劑量均不構成獨立 KRT 適應症。</small></section>
       <section className={confirmed ? 'krt-urgent' : danger ? 'krt-check' : ''}><h3>{onKrt ? '2. 適應症是否仍在' : '2. 是否達 KRT 適應症'}</h3><p className="krt-answer">{onKrt ? advice.text : confirmed ? '立即評估 KRT：已有需專科複核的確定危險條件' : danger ? '立即確認 KRT 危險訊號與治療難治性' : indication.conclusion.includes('資料不足') ? '目前無已確立 KRT 適應症；資料不足不等於排除適應症' : '目前無已確立 KRT 適應症；持續監測重評'}</p>
-        {positives.length > 0 && <ul>{positives.map(item => <li key={item}>{item}</li>)}</ul>}
-        <p>{indication.actions[0]}</p>
+        {positives.length > 0 && <ul>{positives.map(item => <li key={item}>{localizeClinicalText(item)}</li>)}</ul>}
+        <p>{localizeClinicalText(indication.actions[0])}</p>
       </section>
-      <section><h3>{onKrt ? '3. 目前模式' : '3. 若需要 KRT，選哪種模式'}</h3><p className="krt-answer">{modalityAdvice(indication, modality, state)}</p>{onKrt ? <p>脫離與否另見 CRRT 脫離評估；模式偏好不能成為停機或繼續的理由。</p> : confirmed ? <><p>{modality.missingData.length > 0 ? `暫時討論線索：${modality.conclusion}；須補齊資料後重評。` : modality.conclusion}</p><p>CRRT 用於循環不穩、顱內壓風險或需要精密液體／電解質控制等情境的團隊討論；若快速清除需求與腦／循環風險衝突，需專科權衡。</p>
+      <section><h3>{onKrt ? '3. 目前模式' : '3. 若需要 KRT，選哪種模式'}</h3><p className="krt-answer">{modalityAdvice(indication, modality, state)}</p>{onKrt ? <p>脫離與否另見 CRRT 脫離評估；模式偏好不能成為停機或繼續的理由。</p> : confirmed ? <><p>{modality.missingData.length > 0 ? `暫時討論線索：${localizeClinicalText(modality.conclusion)}；須補齊資料後重評。` : localizeClinicalText(modality.conclusion)}</p><p>CRRT 用於循環不穩、顱內壓風險或需要精密液體／電解質控制等情境的團隊討論；若快速清除需求與腦／循環風險衝突，需專科權衡。</p>
         {modality.conclusion.includes('CRRT review') && <details><summary>CRRT 機制怎麼選？</summary><ul><li>CVVHD：以擴散清除小分子溶質為主。</li><li>CVVH：以對流清除為主。</li><li>CVVHDF：結合擴散與對流；無已證實存活優勢。</li><li>SCUF：以液體移除為主，不提供充分溶質清除；有酸鹼／電解質清除需求時不能以 SCUF 取代。</li></ul><p>實際選擇需核對溶質、液體目標、交付劑量、抗凝和本院設備；非機器處方。</p></details>}
       </> : <p>先處理危險訊號並確認適應症。模式偏好不能成為啟動理由。</p>}</section>
     </div>
