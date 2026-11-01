@@ -38,7 +38,7 @@ it('exports versioned JSON and rejects invalid imports without changing the list
 
 it('imports a validated versioned case and confirms deletion and clear-all before mutating storage', async () => {
   const user = userEvent.setup(); mount();
-  expect(screen.getByText('已確認病例與時間點存於 IndexedDB；未確認評估草稿另存於目前分頁的 sessionStorage。刪除／清除會嘗試移除目前分頁草稿，若失敗會警示。')).toBeVisible();
+  expect(screen.getByRole('link', { name: /資料只存在本機/ })).toHaveAttribute('href', '/SA-AKI/privacy');
   const input = screen.getByLabelText('匯入 JSON');
   await user.click(input); await user.paste(JSON.stringify({ schemaVersion: 1, case: { id: 'imported', anonymousCode: 'A-imported' }, snapshots: [] }));
   await user.click(screen.getByRole('button', { name: '驗證並匯入' }));

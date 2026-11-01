@@ -10,6 +10,7 @@ export function PrivacyPage() {
     </div>
     <section className="governance-section" aria-labelledby="draft-lifecycle-heading">
       <h3 id="draft-lifecycle-heading">草稿生命週期與清除範圍</h3>
+      <p>測驗進度只存於目前分頁的 sessionStorage，不含病人資料。示範病例為虛構資料，只有在你選擇開啟時才寫入此瀏覽器。</p>
       <p>sessionStorage 草稿通常可在同一分頁重新載入後恢復；關閉分頁或瀏覽工作階段、清除網站資料或瀏覽器自動清理可能使草稿消失。是否在工作階段還原後保留由瀏覽器決定。</p>
       <p>時間點成功儲存後，應用程式會嘗試清除該病例在目前分頁的評估草稿。</p>
       <p>病例刪除成功後會從 IndexedDB 永久刪除該病例與時間點，並嘗試清除該病例在目前分頁的草稿；「清除全部本機資料」成功後會從 IndexedDB 清除所有病例與時間點，並嘗試清除目前分頁的所有 SA-AKI 評估草稿。</p>

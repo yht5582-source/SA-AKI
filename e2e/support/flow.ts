@@ -103,6 +103,7 @@ export const demoCase = {
 };
 
 export async function importDemo(page: Page) {
+  await page.getByText('匯入、匯出與清除資料', { exact: true }).click();
   await page.getByLabel('匯入 JSON', { exact: true }).fill(JSON.stringify(demoCase));
   await page.getByRole('button', { name: '驗證並匯入', exact: true }).click();
   await expect(page.getByRole('link', { name: '開啟 DEMO-001', exact: true })).toBeVisible();

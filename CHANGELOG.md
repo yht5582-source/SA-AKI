@@ -4,6 +4,8 @@ Clinical-content, evidence, safety, and application changes are recorded here.
 
 ## Unreleased
 
+- Added six fictional, clearly labelled teaching cases (`/demo`) that run the real decision engine at each timepoint, and a 20-question quiz (`/quiz`; 10 basic, 10 advanced; practice and exam modes). Every answer is checked against the engine in tests. No clinical rule changed.
+- Simplified the home page (start tiles, plain-language storage note, data tools collapsed) and added a "needs attention" filter to the decision list.
 - Display and accept clinical times in Taiwan time (UTC+8) to seconds without milliseconds; migrate existing tab drafts and preserve precise instants in saved records and JSON interchange.
 - Corrected HA subrecord reconciliation to count a conflicted event/drug/TDM identity only once and leave disputed details unknown, preventing revised events from becoming false recurrence evidence. Historical medication/TDM/cartridge monitoring now remains visible alongside provenance uncertainty, including omitted current exposure or opt-in documentation; no treatment or dose authorization is inferred.
 - Fixed longitudinal HA exposure reconciliation: omitted later treatment records no longer erase ongoing monitoring; valid stops persist, while duplicate/conflicting/reopened records fail closed into immediate review. Timestamped medication/TDM/adverse-event histories are retained and deduplicated without inferring current clinical approvals.
